@@ -7,7 +7,9 @@ pala2 = pygame.Rect(850, 300, 15, 60)
 ball_center = (500, 400)
 pala1_y_real = pala1.y
 pala2_y_real = pala2.y
-velocidad = 0.2
+velocidad = 300
+game_clock = pygame.time.Clock()
+
 #Inicializa pygame 
 pygame.init()
 pygame.display.set_caption("Juego de Vero")
@@ -16,6 +18,9 @@ pygame.display.set_caption("Juego de Vero")
 #Bucle del juego
 running = True
 while running:
+    #Ajustar los fps
+    delta_time = game_clock.tick(120) / 1000
+
     #Captura de eventos
     events = pygame.event.get()
     #Asigancion del evento closeWindow
@@ -28,14 +33,14 @@ while running:
     keys_state = pygame.key.get_pressed()
 
     if keys_state[pygame.K_w]:
-        pala1_y_real -= velocidad
+        pala1_y_real -= velocidad * delta_time
     elif keys_state[pygame.K_s]:
-        pala1_y_real += velocidad
+        pala1_y_real += velocidad * delta_time
 
     if keys_state[pygame.K_UP]:
-        pala2_y_real -= velocidad
+        pala2_y_real -= velocidad * delta_time
     elif keys_state[pygame.K_DOWN]:
-        pala2_y_real += velocidad
+        pala2_y_real += velocidad * delta_time
     #Limitar el movimiento de las palas a los bordes 
     if pala1_y_real < 0:
         pala1_y_real = 0
@@ -62,6 +67,8 @@ while running:
 
     #Actualiza la screen
     pygame.display.flip()
+
+    
 
 
 #Desinicializacion de pygame
