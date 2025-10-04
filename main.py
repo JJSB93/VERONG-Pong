@@ -19,11 +19,12 @@ while running:
             running = False
             pygame.quit ()
 
-
+    #Pinta un fondo nuevo
     screen.fill((0,0,0))
-    
-    pygame.draw.rect(screen, (255,255,255), rectangulo)
 
+    pygame.draw.rect(screen, (255,255,255), rectangulo)
+    
+    #Actualiza la screen
     pygame.display.flip()
     
        
