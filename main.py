@@ -13,6 +13,7 @@ pala1_y_real = pala1.y
 pala2_y_real = pala2.y
 velocidad = 300
 game_clock = pygame.time.Clock()
+#ball_coll_box = pygame.Rect(ball_real[0], ball_real[1], 2 * BALL_RADIUS, 2 * BALL_RADIUS)
 
 #Inicializa pygame 
 pygame.init()
@@ -64,13 +65,16 @@ while running:
     ball_real[0] += vel_x
     ball_real[1] += vel_y
     ball_center = tuple(ball_real)
-
+    
+    
     #Colisiones
-    if ball_real[0] == pala2.x and (ball_real[1] > pala2.y - (pala2.height /2) and pala2.y + (pala2.height /2)):
-        vel_x -= 2 * vel_x
+    ball_coll_box = pygame.Rect(0, 0, (2 * BALL_RADIUS), (2 * BALL_RADIUS))
+    ball_coll_box.center = ball_center
 
-    if ball_real[0] == pala1.x + pala1.width and (ball_real[1] > pala1.y - (pala1.height /2) and pala1.y + (pala1.height /2)):
-        vel_x -= 2 * vel_x
+    if ball_coll_box.colliderect(pala2) or (ball_coll_box.x >= pala2.x): 
+        vel_x -= 2.3 * vel_x
+    elif ball_coll_box.colliderect(pala1) or (ball_coll_box.x + (2 * BALL_RADIUS) <= pala1.x):
+        vel_x -= 2.3 * vel_x
 
     #Comenzar movimiento de la bola
     if vel_x == 0:
