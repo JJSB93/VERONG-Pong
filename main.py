@@ -14,21 +14,28 @@ def collision_y_check(y, vy, pala_rect, r, t): # <-- Comprueba si en el momento 
     y_in_collision = y + vy * t
     return  top - r <= y_in_collision <= bottom + r
 
-def collision_detection(ball_real, ball_vel, pala_x, r): # <-- Comprueba si hay colision con la pala 
+def collision_detection(ball_real, ball_vel, pala_rect, r): # <-- Comprueba si hay colision con la pala 
     x, y = ball_real                                            # y devuelve el momento dentro del frame donde 
     vx, vy = ball_vel                                           # ocurre la colision "t"
     # La bola se mueve hacia la izquierda
     if vx < 0:
-        t = collision_x(x, vx, r, pala_x.right)
-        if 0 < t < 1 and collision_y_check(y, vy, pala_x, r, t):
+        t = collision_x(x, vx, r, pala_rect.right)
+        if 0 < t < 1 and collision_y_check(y, vy, pala_rect, r, t):
             return t
     # La bola se mueve hacia la derecha    
     elif vx > 0:
-        t = collision_x(x, vx, r, pala_x.left)
-        if 0 < t < 1 and collision_y_check(y, vy, pala_x, r, t):
+        t = collision_x(x, vx, r, pala_rect.left)
+        if 0 < t < 1 and collision_y_check(y, vy, pala_rect, r, t):
             return t
 
     return None
+
+#Funcion para calcular la distancia entre la colision y el centro de la pala
+def relative_collision_point(ball_y, pala_center_y, pala_height):
+    relative_y = (ball_y - pala_center_y)
+    normalized_y = relative_y / (pala_height / 2)
+    return normalized_y
+
 
 
 #Declaro variables
@@ -44,7 +51,7 @@ pala1_y_real = pala1.y
 pala2_y_real = pala2.y
 velocidad = 300
 game_clock = pygame.time.Clock()
-
+#pala_center_y = pala1.center[2]
 
 #Inicializa pygame 
 pygame.init()
@@ -70,7 +77,7 @@ while running:
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_g:
-                    ball_vel[0] = 200
+                    ball_vel[0] = -200
 
     #Registrar teclas pulsadas y mover las palas
     keys_state = pygame.key.get_pressed()
@@ -111,17 +118,27 @@ while running:
     #Colisiones
     ball_coll_box = pygame.Rect(0, 0, (2 * BALL_RADIUS), (2 * BALL_RADIUS))
     ball_coll_box.center = ball_center
-
-    if ball_coll_box.colliderect(pala1) or (ball_coll_box.left <= pala1.right):
-        ball_real[0] = pala1.right + BALL_RADIUS
-        ball_vel[0] = -1.2 * ball_vel[0]
-
-    elif ball_coll_box.colliderect(pala2) or (ball_coll_box.right >= pala2.left):
-        ball_real[0] = pala2.left - BALL_RADIUS
-        ball_vel[0] = -1.2 * ball_vel[0]
     
-    
+    t = collision_detection(ball_real, ball_vel, pala1, BALL_RADIUS)
+    if t is not None and 0 < t <= delta_time:
+        ball_real[0] -= ball_vel[0] * t
+        ball_real[1] -= ball_vel[1] * t
+        if ball_vel[0] < 2000:
+            ball_vel[0] *= -1.2
+        ball_real[0] += ball_vel[0] * (delta_time - t)
+        ball_real[1] += ball_vel[1] * (delta_time - t)
 
+    t = collision_detection(ball_real, ball_vel, pala2, BALL_RADIUS)
+    if t is not None and 0 < t <= delta_time:
+        ball_real[0] += ball_vel[0] * t
+        ball_real[1] += ball_vel[1] * t
+        if ball_vel[0] < 2000:
+            ball_vel[0] *= -1.2
+        ball_real[0] -= ball_vel[0] * (delta_time - t)
+        ball_real[1] -= ball_vel[1] * (delta_time - t)
+
+    # if ball_vel[0] >= 2000:
+    #     ball_vel[0] = 1999
     #Pinta un fondo nuevo
     screen.fill((0,0,0))
 
