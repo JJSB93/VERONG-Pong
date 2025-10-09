@@ -1,4 +1,8 @@
 import pygame, math
+
+EPSILON = 1e-6
+BALL_RADIUS = 10
+
 #Funciones para detectar colision matematica
 def collision_x(x, vx, r, pala_edge): # <-- Calcula el momento en el que ocurre la colision
     if vx > 0:
@@ -7,6 +11,8 @@ def collision_x(x, vx, r, pala_edge): # <-- Calcula el momento en el que ocurre 
     elif vx < 0:
         t = (pala_edge + r - x) / vx
         return t
+    elif vx == 0:
+        return None
 
 def collision_y_check(y, vy, pala_rect, r, t): # <-- Comprueba si en el momento "t", la pala colisiona con "y"
     top = pala_rect.top
@@ -14,18 +20,18 @@ def collision_y_check(y, vy, pala_rect, r, t): # <-- Comprueba si en el momento 
     y_in_collision = y + vy * t
     return  top - r <= y_in_collision <= bottom + r
 
-def collision_detection(ball_real, ball_vel, pala_rect, r): # <-- Comprueba si hay colision con la pala 
-    x, y = ball_real                                            # y devuelve el momento dentro del frame donde 
+def collision_detection(prev_ball_real, ball_vel, pala_rect, r): # <-- Comprueba si hay colision con la pala 
+    x, y = prev_ball_real                                            # y devuelve el momento dentro del frame donde 
     vx, vy = ball_vel                                           # ocurre la colision "t"
     # La bola se mueve hacia la izquierda
     if vx < 0:
         t = collision_x(x, vx, r, pala_rect.right)
-        if 0 < t < 1 and collision_y_check(y, vy, pala_rect, r, t):
+        if t > 0 and collision_y_check(y, vy, pala_rect, r, t):
             return t
     # La bola se mueve hacia la derecha    
     elif vx > 0:
         t = collision_x(x, vx, r, pala_rect.left)
-        if 0 < t < 1 and collision_y_check(y, vy, pala_rect, r, t):
+        if t > 0 and collision_y_check(y, vy, pala_rect, r, t):
             return t
 
     return None
@@ -34,25 +40,27 @@ def collision_detection(ball_real, ball_vel, pala_rect, r): # <-- Comprueba si h
 def relative_collision_point(ball_y, pala_center_y, pala_height):
     relative_y = (ball_y - pala_center_y)
     normalized_y = relative_y / (pala_height / 2)
-    return normalized_y
-
+    return max(-1,min(normalized_y, 1))
 
 
 #Declaro variables
-(width, height) = (1000, 800)
-screen = pygame.display.set_mode((width, height))
-pala1 = pygame.Rect(150, 300, 15, 60)
-pala2 = pygame.Rect(850, 300, 15, 60)
-ball_center = (500, 400)
+width = 1200
+height = 800
+resolution = (width, height)
+screen = pygame.display.set_mode(resolution)
+pala1_x = width * 0.15
+pala2_x = width - (width * 0.15)
+pala1 = pygame.Rect(pala1_x, 300, 15, 60)
+pala2 = pygame.Rect(pala2_x, 300, 15, 60)
+ball_center = (width * 0.5, height * 0.5)
 ball_real = list(ball_center)
-BALL_RADIUS = 10
 ball_vel = [0, 0]
 pala1_y_real = pala1.y
 pala2_y_real = pala2.y
 speed = 300
 game_clock = pygame.time.Clock()
 pala_center_y = pala1.center[1]
-max_bounce_angle = 30
+max_bounce_angle = 15
 b_angle_rad = 0.0
 
 #Inicializa pygame 
@@ -116,41 +124,58 @@ while running:
 
     ball_center = tuple(ball_real)
     
-    #Colisiones
-    ball_coll_box = pygame.Rect(0, 0, (2 * BALL_RADIUS), (2 * BALL_RADIUS))
-    ball_coll_box.center = ball_center
-    
-    t = collision_detection(ball_real, ball_vel, pala1, BALL_RADIUS)
-    if t is not None and 0 < t <= delta_time:
+    #Colisiones y rebote con los margenes
+    if ball_real[1] - BALL_RADIUS <= 0:
+        ball_real[1] = 0 + BALL_RADIUS
+        ball_vel[1] = - ball_vel[1]
+
+    if ball_real[1] + BALL_RADIUS >= height:
+        ball_real[1] = height - BALL_RADIUS
+        ball_vel[1] = - ball_vel[1]
+
+    #Colision con Pala1
+    t = collision_detection(prev_ball_real, ball_vel, pala1, BALL_RADIUS)
+    if t is not None and EPSILON < t <= delta_time - EPSILON:
         #Posicionamiento de la bola cuando colisiona    
-        ball_real[0] -= ball_vel[0] * t
-        ball_real[1] -= ball_vel[1] * t
+        ball_real[0] = prev_ball_real[0] + ball_vel[0] * t
+        ball_real[1] = prev_ball_real[1] + ball_vel[1] * t
+        
         #Ajuste de la velocidad y del angulo del rebote 
         coll_point_y = relative_collision_point(ball_real[1], pala1.centery, pala1.height)
         bounce_angle = coll_point_y * max_bounce_angle
-        bounce_angle_rad = math.radians(bounce_angle) 
+        bounce_angle_rad = math.radians(bounce_angle)
+        if (speed * 1.1) <= 700:
+            speed *= 1.1 
         ball_vel[0] = speed * math.cos(bounce_angle_rad)
         ball_vel[1] = speed * math.sin(bounce_angle_rad)
+        
         #Posicionamiento de la bola despues del rebote
-        ball_real[0] += ball_vel[0] * (delta_time - t)
-        ball_real[1] += ball_vel[1] * (delta_time - t)
+        remianing_time = delta_time - t
+        ball_real[0] += ball_vel[0] * remianing_time
+        ball_real[1] += ball_vel[1] * remianing_time
 
-
-
-    t = collision_detection(ball_real, ball_vel, pala2, BALL_RADIUS)
-    if t is not None and 0 < t <= delta_time:
+    #Colision con pala2
+    t = collision_detection(prev_ball_real, ball_vel, pala2, BALL_RADIUS)
+    if t is not None and EPSILON < t <= delta_time - EPSILON:
         #Posicionamiento de la bola cuando colisiona
-        ball_real[0] += ball_vel[0] * t
-        ball_real[1] += ball_vel[1] * t
+        ball_real[0] = prev_ball_real[0] + ball_vel[0] * t
+        ball_real[1] = prev_ball_real[1] + ball_vel[1] * t
+
         #Ajuste de la velocidad y del angulo del rebote 
         coll_point_y = relative_collision_point(ball_real[1], pala2.centery, pala2.height)
         bounce_angle = coll_point_y * max_bounce_angle
         bounce_angle_rad = math.radians(bounce_angle) 
+        if (speed * 1.1) <= 700:
+            speed *= 1.1
         ball_vel[0] = - speed * math.cos(bounce_angle_rad)
         ball_vel[1] = speed * math.sin(bounce_angle_rad)
+        
         #Posicionamiento de la bola despues del rebote
-        ball_real[0] -= ball_vel[0] * (delta_time - t)
-        ball_real[1] -= ball_vel[1] * (delta_time - t)
+        remianing_time = delta_time - t
+        ball_real[0] -= ball_vel[0] * remianing_time
+        ball_real[1] -= ball_vel[1] * remianing_time
+
+    
 
     screen.fill((0,0,0))
 
