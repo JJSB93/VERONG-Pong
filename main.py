@@ -67,13 +67,17 @@ ball_real = list(ball_center)
 ball_vel = [0, 0]
 pala1_y_real = pala1.y
 pala2_y_real = pala2.y
-ball_speed = 500
+ball_speed = 400
+ball_reset_speed = ball_speed
 paddle_speed = 350
 game_clock = pygame.time.Clock()
 pala_center_y = pala1.center[1]
 max_bounce_angle = 45
 b_angle_rad = 0.0
 t_min = None
+p1_score = 0
+p2_score = 0
+service = False
 
 #Inicializa pygame 
 pygame.init()
@@ -98,7 +102,10 @@ while running:
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_g:
-                    ball_vel[0] = ball_speed
+                    if service:
+                        ball_vel[0] = ball_reset_speed
+                    else:
+                        ball_vel[0] = -ball_reset_speed
 
     #Registrar teclas pulsadas y mover las palas
     keys_state = pygame.key.get_pressed()
@@ -130,19 +137,28 @@ while running:
     pala2.y = int(pala2_y_real)
 
     #Movimiento de la bola
-    prev_ball_real = ball_real[:]
-    ball_real[0] += ball_vel[0] * delta_time
-    ball_real[1] += ball_vel[1] * delta_time
+    if ball_vel != (0, 0):
+        prev_ball_real = ball_real[:]
+        ball_real[0] += ball_vel[0] * delta_time
+        ball_real[1] += ball_vel[1] * delta_time
 
-    ball_center = tuple(ball_real)
-    
-    #Calcular los timepos de colision
-    collision_times = []
-    collision_times_filtered = []
-    t_min = None
-    t_pala1 = collision_detection(prev_ball_real, ball_vel, pala1, BALL_RADIUS)
-    t_pala2 = collision_detection(prev_ball_real, ball_vel, pala2, BALL_RADIUS)
-    t_margin = margins_collision(prev_ball_real[1], ball_vel[1], BALL_RADIUS, height)
+        ball_center = tuple(ball_real)
+    #Loop de resolucion de colisiones por sub-intervalos dentro del frame
+    remaining_time = delta_time
+    position = prev_ball_real
+
+    while remaining_time > EPSILON:
+
+
+
+
+        #Calcular los timepos de colision
+        collision_times = []
+        collision_times_filtered = []
+        t_min = None
+        t_pala1 = collision_detection(prev_ball_real, ball_vel, pala1, BALL_RADIUS)
+        t_pala2 = collision_detection(prev_ball_real, ball_vel, pala2, BALL_RADIUS)
+        t_margin = margins_collision(prev_ball_real[1], ball_vel[1], BALL_RADIUS, height)
 
     #Calcular la colision mas proxima en el tiempo
     collision_times = [("t_pala1", t_pala1), ("t_pala2", t_pala2), ("t_margin", t_margin)]
@@ -203,8 +219,8 @@ while running:
         coll_point_y = relative_collision_point(ball_real[1], pala2.centery, pala2.height)
         bounce_angle = coll_point_y * max_bounce_angle
         bounce_angle_rad = math.radians(bounce_angle) 
-        if (ball_speed * 1.1) <= 700:
-            ball_speed *= 1.1
+        if (ball_speed * 1.05) <= 650:
+            ball_speed *= 1.05
         ball_vel[0] = - ball_speed * math.cos(bounce_angle_rad)
         ball_vel[1] = ball_speed * math.sin(bounce_angle_rad)
         
@@ -214,8 +230,23 @@ while running:
         ball_real[1] += ball_vel[1] * remaining_time
 
     #Actualizacion de la posicion de la bola y reset de variables
-    ball_center = tuple(ball_real)
+    if ball_vel != (0, 0):
+        ball_center = tuple(ball_real)
     t_min = None
+
+    #Deteccion de puntos y reinicio de la posicion de la bola
+    if ball_center[0] < 0:
+        p2_score += 1
+        ball_vel = [0,0]
+        ball_real = [(width / 2), (height / 2)]
+        service = False
+        ball_speed = ball_reset_speed
+    if ball_center[0] > width:
+        p1_score += 1
+        ball_vel = [0,0]
+        ball_real = [(width / 2), (height / 2)]
+        service = True
+        ball_speed = ball_reset_speed
 
     screen.fill((0,0,0))
 
