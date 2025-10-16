@@ -67,6 +67,7 @@ pala1 = pygame.Rect(pala1_x, pala1_y, 20, pala_height)
 pala2 = pygame.Rect(pala2_x, pala2_y, 20, pala_height)
 ball_center = (width * 0.5, height * 0.5)
 ball_real = list(ball_center)
+ball_render = ball_real[:]
 ball_vel = [0, 0]
 pala1_y_real = pala1.y
 pala2_y_real = pala2.y
@@ -81,6 +82,11 @@ t_min = None
 p1_score = 0
 p2_score = 0
 service = False
+# font = pygame.font.Font(None, 38)
+p1_name = "Vero"
+p2_name = "Juan"
+
+
 
 #Inicializa pygame 
 pygame.init()
@@ -163,8 +169,6 @@ while running:
         for collision in collision_times_filtered:
             if t_min == None or collision[1] < t_min[1]:
                 t_min = collision
-                print(t_min)
-                print(remaining_time)
 
         if t_min == None:
             position[0] += (ball_vel[0] * remaining_time)
@@ -228,18 +232,27 @@ while running:
         p2_score += 1
         ball_vel = [0,0]
         ball_real = [width / 2, height / 2]
+        ball_render = ball_real[:]
         service = False
         ball_speed = ball_reset_speed
+        #print(f"{p1_name} - {p1_score}     {p2_name} - {p2_score}")
     elif ball_real[0] > width:
         p1_score += 1
         ball_vel = [0,0]
         ball_real = [width / 2, height / 2]
+        ball_render = ball_real[:]
         service = True
         ball_speed = ball_reset_speed
+        #print(f"{p1_name} - {p1_score}     {p2_name} - {p2_score}")
 
-    
+    #Marcador
+    # scores = f"{p1_name} - {p1_score}   {p2_name} - {p2_score}"
+    # scoreboard = font.rendera()
 
-    ball_center = (int(ball_real[0]), int(ball_real[1]))
+    alpha = 0.8
+    ball_render[0] += (ball_real[0] - ball_render[0]) * alpha
+    ball_render[1] += (ball_real[1] - ball_render[1]) * alpha
+    ball_center = (int(ball_render[0]), int(ball_render[1]))
     screen.fill((0,0,0))
 
     #Dibuja las palas
