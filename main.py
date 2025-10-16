@@ -82,7 +82,7 @@ t_min = None
 p1_score = 0
 p2_score = 0
 service = False
-# font = pygame.font.Font(None, 38)
+ 
 p1_name = "Vero"
 p2_name = "Juan"
 
@@ -91,6 +91,9 @@ p2_name = "Juan"
 #Inicializa pygame 
 pygame.init()
 pygame.display.set_caption("Juego de Vero")
+
+#Inicializacion de la fuente 
+font = pygame.font.SysFont("Arial", 38)
 
 #Bucle del juego
 running = True
@@ -246,8 +249,9 @@ while running:
         #print(f"{p1_name} - {p1_score}     {p2_name} - {p2_score}")
 
     #Marcador
-    # scores = f"{p1_name} - {p1_score}   {p2_name} - {p2_score}"
-    # scoreboard = font.rendera()
+    scores_text = f"{p1_name} - {p1_score}   {p2_name} - {p2_score}"
+    scoreboard = font.render(scores_text, True, (0, 0, 0), (255, 255, 255))
+    
 
     alpha = 0.8
     ball_render[0] += (ball_real[0] - ball_render[0]) * alpha
@@ -259,7 +263,7 @@ while running:
     pygame.draw.rect(screen, (255,255,255), pala1)
     pygame.draw.rect(screen, (255,255,255), pala2)
     pygame.draw.circle(screen, (255,255,255), ball_center, BALL_RADIUS)
-    
+    screen.blit(scoreboard, (width//2 - scoreboard.get_width()//2, 20))
 
     #Actualiza la screen
     pygame.display.flip()
