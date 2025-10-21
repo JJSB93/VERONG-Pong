@@ -1,6 +1,6 @@
 import pygame, math
 
-EPSILON = 1e-9
+EPSILON = 1e-7
 BALL_RADIUS = 10
 
 #Funciones para detectar colision matematica
@@ -53,223 +53,279 @@ def margins_collision(y, vy, r, height):
     elif vy == 0:
         return None
 
+#Inicializa pygame y el titulo
+pygame.init()
+pygame.display.set_caption("Juego de Vero")
+
+#Inicializacion de la fuente para el texto 
+font = pygame.font.SysFont("Arial", 38)
+
+
 #Declaro variables
 width = 1900
 height = 1080
 resolution = (width, height)
-screen = pygame.display.set_mode(resolution)
+screen = pygame.display.set_mode(resolution, pygame.RESIZABLE)
+
 pala_height = 100
-pala1_x = width * 0.15
-pala2_x = width - (width * 0.15)
-pala1_y = (height * 0.5) - (pala_height / 2)
-pala2_y = (height * 0.5) - (pala_height / 2)
-pala1 = pygame.Rect(pala1_x, pala1_y, 20, pala_height)
-pala2 = pygame.Rect(pala2_x, pala2_y, 20, pala_height)
+pala_width = 20
+
+pala1_x = int(width * 0.15)
+pala2_x = int(width - (width * 0.15) - pala_width)
+
+pala1_y = int((height * 0.5) - (pala_height / 2))
+pala2_y = int((height * 0.5) - (pala_height / 2))
+
+pala1 = pygame.Rect(pala1_x, pala1_y, pala_width, pala_height)
+pala2 = pygame.Rect(pala2_x, pala2_y, pala_width, pala_height)
+
 ball_center = (width * 0.5, height * 0.5)
 ball_real = list(ball_center)
 ball_render = ball_real[:]
 ball_vel = [0, 0]
+
 pala1_y_real = pala1.y
 pala2_y_real = pala2.y
+
 ball_speed = 400
 ball_reset_speed = ball_speed
 paddle_speed = 350
 game_clock = pygame.time.Clock()
-pala_center_y = pala1.center[1]
 max_bounce_angle = 45
 b_angle_rad = 0.0
 t_min = None
 p1_score = 0
 p2_score = 0
 service = False
- 
+spacing = 50
+title_y = 90
+menu_center_y = height // 2
+
+
+
+
 p1_name = "Vero"
 p2_name = "Juan"
 
+game_state = "menu"
+menu_text1 = "Bienvenido al Juego de Vero" 
+menu_text2 = "Pulsa  J  para jugar" 
+menu_text3 = "Pulsa ESC para salir"
+text_fading = False
+fading_speed = 255
+text_alpha = 0
 
-
-#Inicializa pygame 
-pygame.init()
-pygame.display.set_caption("Juego de Vero")
-
-#Inicializacion de la fuente 
-font = pygame.font.SysFont("Arial", 38)
+menu_text1_render = font.render(menu_text1, True, (255, 255, 255))
+menu_text2_render = font.render(menu_text2, True, (255, 255, 255))
+menu_text3_render = font.render(menu_text3, True, (255, 255, 255))
 
 #Bucle del juego
 running = True
 while running:
     #Ajustar los fps
-    delta_time = game_clock.tick(140) / 1000
+    delta_time = game_clock.tick(240) / 1000
 
-    #Captura de eventos
+    #Captura de eventos y resolucion 
     events = pygame.event.get()
-
-    #Asigancion del evento closeWindow
     for event in events:
-        if event.type == pygame.QUIT:
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_j:
+                game_state = "playing"
+            elif event.key == pygame.K_ESCAPE and game_state == "menu":
+                running = False
+            elif event.key == pygame.K_g and game_state == "playing":
+                if ball_vel[0] == 0:
+                    ball_vel[0] = ball_reset_speed if service else -ball_reset_speed
+        elif event.type == pygame.QUIT:
             running = False
-            pygame.quit ()
+        elif event.type == pygame.VIDEORESIZE:
+            width, height = event.w, event.h
+            resolution = (width, height)
 
-    #Comenzar movimiento de la bola
-    if ball_vel[0] == 0:
-        for event in events:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_g:
-                    if service:
-                        ball_vel[0] = ball_reset_speed
-                    else:
-                        ball_vel[0] = -ball_reset_speed
+            pala1.x = int(width * 0.15)
+            pala2.x = int(width - (width * 0.15) - pala2.width)
 
-    #Registrar teclas pulsadas y mover las palas
-    keys_state = pygame.key.get_pressed()
+            pala1_y_real = int((height * 0.5) - (pala_height / 2))
+            pala2_y_real = int((height * 0.5) - (pala_height / 2))
+            pala1.y = pala1_y_real
+            pala2.y = pala2_y_real
 
-    if keys_state[pygame.K_w]:
-        pala1_y_real -= paddle_speed * delta_time
-    elif keys_state[pygame.K_s]:
-        pala1_y_real += paddle_speed * delta_time
+            ball_real = [width * 0.5, height * 0.5]
+            ball_center = ball_real[:]
 
-    if keys_state[pygame.K_UP]:
-        pala2_y_real -= paddle_speed * delta_time
-    elif keys_state[pygame.K_DOWN]:
-        pala2_y_real += paddle_speed * delta_time
+    if game_state == "menu":
+        screen.fill((0, 0, 0))
 
-    #Limitar el movimiento de las palas a los bordes 
-    if pala1_y_real < 0:
-        pala1_y_real = 0
-    if pala1_y_real > height - pala1.height:
-        pala1_y_real = height - pala1.height
-
-    if pala2_y_real < 0:
-        pala2_y_real = 0
-    if pala2_y_real > height - pala2.height:
-        pala2_y_real = height - pala2.height
-
-    #Actualizar la posicion de pala.y mediante una variable
-    # para poder aumentar y disminuir en decimales
-    pala1.y = int(pala1_y_real)
-    pala2.y = int(pala2_y_real)
-
-    #Loop de resolucion de colisiones por sub-intervalos dentro del frame
-    remaining_time = delta_time
-    position = ball_real[:]
-    while remaining_time > EPSILON:
-
-        #Calcular los timepos de colision
-        collision_times = []
-        collision_times_filtered = []
-        t_min = None
-        t_pala1 = collision_detection(position, ball_vel, pala1, BALL_RADIUS)
-        t_pala2 = collision_detection(position, ball_vel, pala2, BALL_RADIUS)
-        t_margin = margins_collision(position[1], ball_vel[1], BALL_RADIUS, height)
-
-        #Calcular la colision mas proxima en el tiempo
-        collision_times = [("t_pala1", t_pala1), ("t_pala2", t_pala2), ("t_margin", t_margin)]
+        if text_fading:
+            text_alpha += fading_speed * delta_time
+            if text_alpha >= 255:
+                text_fading = False
+        elif not text_fading:
+            text_alpha -= fading_speed * delta_time
+            if text_alpha <= 0:
+                text_fading = True
         
-        for collision in collision_times:
-            if collision[1] is not None and EPSILON < collision[1] <= (remaining_time - EPSILON):
-                collision_times_filtered.append(collision)
+        text_alpha = max(0, min(255, text_alpha))
+        menu_text2_render.set_alpha(text_alpha)
+
+        menu_height = menu_text2_render.get_height() + menu_text3_render.get_height() + (spacing * 2)
+        screen.blit(menu_text1_render, ((width //2) - (menu_text1_render.get_width() //2), title_y))
+        screen.blit(menu_text2_render, ((width //2) - (menu_text2_render.get_width() //2), menu_center_y - (menu_height // 2)))
+        screen.blit(menu_text3_render, ((width //2) - (menu_text3_render.get_width() //2), (menu_center_y - (menu_height // 2)) + menu_text2_render.get_height() + spacing))
         
-        for collision in collision_times_filtered:
-            if t_min == None or collision[1] < t_min[1]:
-                t_min = collision
 
-        if t_min == None:
-            position[0] += (ball_vel[0] * remaining_time)
-            position[1] += (ball_vel[1] * remaining_time)
-            remaining_time = 0
-            break
 
-        #Colisiones y rebote con los margenes
-        if t_min is not None and t_min[0] == "t_margin":
-            #Posicionamiento de la bola cuando colisiona    
-            position[0] += ball_vel[0] * t_min[1]
-            position[1] += ball_vel[1] * t_min[1]
+    if game_state == "playing":
+        #Registrar teclas pulsadas y mover las palas
+        keys_state = pygame.key.get_pressed()
+        if keys_state[pygame.K_w]:
+            pala1_y_real -= paddle_speed * delta_time
+        elif keys_state[pygame.K_s]:
+            pala1_y_real += paddle_speed * delta_time
 
-            #Inveriosn de la direccion de la bola
-            ball_vel[1] = -ball_vel[1]
+        if keys_state[pygame.K_UP]:
+            pala2_y_real -= paddle_speed * delta_time
+        elif keys_state[pygame.K_DOWN]:
+            pala2_y_real += paddle_speed * delta_time
 
-            #Calculo del tiempo del restante del frame
-            remaining_time -= t_min[1]
-            continue
+        #Limitar el movimiento de las palas a los bordes 
+        if pala1_y_real < 0:
+            pala1_y_real = 0
+        if pala1_y_real > height - pala1.height:
+            pala1_y_real = height - pala1.height
 
-        #Colision con Pala1
-        elif t_min is not None and t_min[0] == "t_pala1":
-            #Posicionamiento de la bola cuando colisiona    
-            position[0] += ball_vel[0] * t_min[1]
-            position[1] += ball_vel[1] * t_min[1]
+        if pala2_y_real < 0:
+            pala2_y_real = 0
+        if pala2_y_real > height - pala2.height:
+            pala2_y_real = height - pala2.height
+
+        #Actualizar la posicion de pala.y mediante una variable
+        # para poder aumentar y disminuir en decimales
+        pala1.y = int(pala1_y_real)
+        pala2.y = int(pala2_y_real)
+
+        #Loop de resolucion de colisiones por sub-intervalos dentro del frame
+        remaining_time = delta_time
+        position = ball_real[:]
+        while remaining_time > EPSILON:
+            #Calcular los timepos de colision
+            collision_times = []
+            collision_times_filtered = []
+            t_min = None
+            t_pala1 = collision_detection(position, ball_vel, pala1, BALL_RADIUS)
+            t_pala2 = collision_detection(position, ball_vel, pala2, BALL_RADIUS)
+            t_margin = margins_collision(position[1], ball_vel[1], BALL_RADIUS, height)
+
+            #Calcular la colision mas proxima en el tiempo
+            collision_times = [("t_pala1", t_pala1), ("t_pala2", t_pala2), ("t_margin", t_margin)]
             
-            #Ajuste de la velocidad y del angulo del rebote 
-            coll_point_y = relative_collision_point(position[1], pala1.centery, pala1.height)
-            bounce_angle = coll_point_y * max_bounce_angle
-            bounce_angle_rad = math.radians(bounce_angle)
-            if (ball_speed * 1.1) <= 700:
-                ball_speed *= 1.1 
-            ball_vel[0] = ball_speed * math.cos(bounce_angle_rad)
-            ball_vel[1] = ball_speed * math.sin(bounce_angle_rad)
+            for collision in collision_times:
+                if collision[1] is not None and EPSILON < collision[1] <= (remaining_time - EPSILON):
+                    collision_times_filtered.append(collision)
             
-            #Calculo del tiempo del restante del frame
-            remaining_time -= t_min[1]
-            continue
-        #Colision con pala2
-        elif t_min is not None and t_min[0] == "t_pala2":
-            #Posicionamiento de la bola cuando colisiona
-            position[0] += ball_vel[0] * t_min[1]
-            position[1] += ball_vel[1] * t_min[1]
+            for collision in collision_times_filtered:
+                if t_min == None or collision[1] < t_min[1]:
+                    t_min = collision
 
-            #Ajuste de la velocidad y del angulo del rebote 
-            coll_point_y = relative_collision_point(position[1], pala2.centery, pala2.height)
-            bounce_angle = coll_point_y * max_bounce_angle
-            bounce_angle_rad = math.radians(bounce_angle) 
-            if (ball_speed * 1.05) <= 650:
-                ball_speed *= 1.05
-            ball_vel[0] = - ball_speed * math.cos(bounce_angle_rad)
-            ball_vel[1] = ball_speed * math.sin(bounce_angle_rad)
+            if t_min == None:
+                position[0] += (ball_vel[0] * remaining_time)
+                position[1] += (ball_vel[1] * remaining_time)
+                remaining_time = 0
+                break
+
+            #Colisiones y rebote con los margenes
+            if t_min is not None and t_min[0] == "t_margin":
+                #Posicionamiento de la bola cuando colisiona    
+                position[0] += ball_vel[0] * t_min[1]
+                position[1] += ball_vel[1] * t_min[1]
+
+                #Inveriosn de la direccion de la bola
+                ball_vel[1] = -ball_vel[1]
+
+                #Calculo del tiempo del restante del frame
+                remaining_time -= t_min[1]
+                continue
+
+            #Colision con Pala1
+            elif t_min is not None and t_min[0] == "t_pala1":
+                #Posicionamiento de la bola cuando colisiona    
+                position[0] += ball_vel[0] * t_min[1]
+                position[1] += ball_vel[1] * t_min[1]
+                
+                #Ajuste de la velocidad y del angulo del rebote 
+                coll_point_y = relative_collision_point(position[1], pala1.centery, pala1.height)
+                bounce_angle = coll_point_y * max_bounce_angle
+                bounce_angle_rad = math.radians(bounce_angle)
+                if (ball_speed * 1.1) <= 700:
+                    ball_speed *= 1.1 
+                ball_vel[0] = ball_speed * math.cos(bounce_angle_rad)
+                ball_vel[1] = ball_speed * math.sin(bounce_angle_rad)
+                
+                #Calculo del tiempo del restante del frame
+                remaining_time -= t_min[1]
+                continue
+
+            #Colision con pala2
+            elif t_min is not None and t_min[0] == "t_pala2":
+                #Posicionamiento de la bola cuando colisiona
+                position[0] += ball_vel[0] * t_min[1]
+                position[1] += ball_vel[1] * t_min[1]
+
+                #Ajuste de la velocidad y del angulo del rebote 
+                coll_point_y = relative_collision_point(position[1], pala2.centery, pala2.height)
+                bounce_angle = coll_point_y * max_bounce_angle
+                bounce_angle_rad = math.radians(bounce_angle) 
+                if (ball_speed * 1.05) <= 650:
+                    ball_speed *= 1.05
+                ball_vel[0] = - ball_speed * math.cos(bounce_angle_rad)
+                ball_vel[1] = ball_speed * math.sin(bounce_angle_rad)
+                
+                #Calculo del tiempo del restante del frame
+                remaining_time -= t_min[1]
+                continue
             
-            #Calculo del tiempo del restante del frame
-            remaining_time -= t_min[1]
-            continue
+        #Deteccion de puntos y reinicio de la posicion de la bola
+        ball_real = position[:]
+        if ball_real[0] < 0:
+            p2_score += 1
+            ball_vel = [0,0]
+            ball_real = [width / 2, height / 2]
+            ball_render = ball_real[:]
+            service = False
+            ball_speed = ball_reset_speed
+        elif ball_real[0] > width:
+            p1_score += 1
+            ball_vel = [0,0]
+            ball_real = [width / 2, height / 2]
+            ball_render = ball_real[:]
+            service = True
+            ball_speed = ball_reset_speed
+
+
+        #Marcador
+        scores_text = f"{p1_name} - {p1_score}   {p2_name} - {p2_score}"
+        scoreboard = font.render(scores_text, True, (0, 0, 0), (255, 255, 255))
         
-    ball_real = position[:]
-    #Deteccion de puntos y reinicio de la posicion de la bola
-    if ball_real[0] < 0:
-        p2_score += 1
-        ball_vel = [0,0]
-        ball_real = [width / 2, height / 2]
+        #Interpolacion del renderizado de la bola para suavizar el movimiento
+        alpha = 0.8
+        ball_render[0] += (ball_real[0] - ball_render[0]) * alpha
+        ball_render[1] += (ball_real[1] - ball_render[1]) * alpha
         ball_render = ball_real[:]
-        service = False
-        ball_speed = ball_reset_speed
-        #print(f"{p1_name} - {p1_score}     {p2_name} - {p2_score}")
-    elif ball_real[0] > width:
-        p1_score += 1
-        ball_vel = [0,0]
-        ball_real = [width / 2, height / 2]
-        ball_render = ball_real[:]
-        service = True
-        ball_speed = ball_reset_speed
-        #print(f"{p1_name} - {p1_score}     {p2_name} - {p2_score}")
+        ball_center = (int(ball_render[0]), int(ball_render[1]))
 
-    #Marcador
-    scores_text = f"{p1_name} - {p1_score}   {p2_name} - {p2_score}"
-    scoreboard = font.render(scores_text, True, (0, 0, 0), (255, 255, 255))
+
+        #Dibuja las palas, la bola y el marcador
+        screen.fill((0,0,0))
+        pygame.draw.rect(screen, (255,255,255), pala1)
+        pygame.draw.rect(screen, (255,255,255), pala2)
+        pygame.draw.circle(screen, (255,255,255), ball_center, BALL_RADIUS)
+        screen.blit(scoreboard, (width//2 - scoreboard.get_width()//2, 20))
+
+        
+
     
-
-    alpha = 0.8
-    ball_render[0] += (ball_real[0] - ball_render[0]) * alpha
-    ball_render[1] += (ball_real[1] - ball_render[1]) * alpha
-    ball_center = (int(ball_render[0]), int(ball_render[1]))
-    screen.fill((0,0,0))
-
-    #Dibuja las palas
-    pygame.draw.rect(screen, (255,255,255), pala1)
-    pygame.draw.rect(screen, (255,255,255), pala2)
-    pygame.draw.circle(screen, (255,255,255), ball_center, BALL_RADIUS)
-    screen.blit(scoreboard, (width//2 - scoreboard.get_width()//2, 20))
-
     #Actualiza la screen
     pygame.display.flip()
-
-    
-
 
 #Desinicializacion de pygame
 pygame.quit()
