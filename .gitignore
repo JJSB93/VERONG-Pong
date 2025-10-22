@@ -1,3 +1,22 @@
+# Documentacion
 documentation/
-.vscode/
+
+# Python
 prueba.py
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Entornos virtuales
+venv/
+env/
+.venv/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/

@@ -1,4 +1,5 @@
 import pygame, math
+from button import Button
 
 EPSILON = 1e-7
 BALL_RADIUS = 10
@@ -53,6 +54,7 @@ def margins_collision(y, vy, r, height):
     elif vy == 0:
         return None
 
+
 #Inicializa pygame y el titulo
 pygame.init()
 pygame.display.set_caption("Juego de Vero")
@@ -101,30 +103,23 @@ spacing = 50
 title_y = 90
 menu_center_y = height // 2
 
+game_state = "menu"
+menu_text1 = "Bienvenido al Juego de Vero" 
+menu_text2 = "Jugar" 
+menu_text3 = "Salir"
+
 #Colores
 WHITE = (255, 255, 255)
 GRAY = (180, 180, 180)
 HIGHLIGHT = (255, 255, 100) 
 
-
-
 p1_name = "Vero"
 p2_name = "Juan"
 
-game_state = "menu"
-menu_text1 = "Bienvenido al Juego de Vero" 
-menu_text2 = "Jugar" 
-menu_text3 = "Salir"
-text_fading = False
-fading_speed = 255
-text_alpha = 0
+button_play = None
+button_exit = None
 
 menu_text1_render = font.render(menu_text1, True, WHITE)
-menu_text2_render = font.render(menu_text2, True, (255, 255, 255, 255))
-menu_text2_render_hoover = font.render(menu_text2, True, HIGHLIGHT)
-menu_text3_render = font.render(menu_text3, True, WHITE)
-
-mouse_left_down = False
 
 #Bucle del juego
 running = True
@@ -170,57 +165,41 @@ while running:
 
     #Bucle del menu principal
     if game_state == "menu":
+
+        #Inicializacion de los botones 
+        if button_play is None:
+            button_play = Button("Jugar", menu_center_y - 20, font, WHITE, HIGHLIGHT, fade_enabled=True)
+            button_exit = Button("Salir", menu_center_y + 40, font, WHITE, HIGHLIGHT)
+
+        #Vaciado de la pantalla
         screen.fill((0, 0, 0))
 
-        #Bucle de interpolacion del parpadeo del texto
-        if text_fading:
-            text_alpha += fading_speed * delta_time
-            if text_alpha >= 255:
-                text_fading = False
-        elif not text_fading:
-            text_alpha -= fading_speed * delta_time
-            if text_alpha <= 0:
-                text_fading = True
-        
-        menu_height = menu_text2_render.get_height() + menu_text3_render.get_height() + (spacing * 2)
+        #Captura de la posicion y del clic del mouse
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_click = pygame.mouse.get_pressed()[0]
 
-        #Inicializacion de las hitbox del menu
-        menu_2_pos = (width //2) - (menu_text2_render.get_width() //2), menu_center_y - (menu_height // 2)
-        menu_2_box = menu_text2_render.get_rect(topleft=menu_2_pos)
-        menu_3_pos = (width //2) - (menu_text3_render.get_width() //2), \
-                        (menu_center_y - (menu_height // 2)) + menu_text2_render.get_height() + spacing
-        menu_3_box = menu_text3_render.get_rect(topleft=menu_3_pos)
+        #Actualizacion de los botones
+        button_play.update(mouse_pos, mouse_click, delta_time, width)
+        button_exit.update(mouse_pos, mouse_click, delta_time, width)
 
-        #Captura de la posicion del mouse
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        mouse_pos = (mouse_x, mouse_y)
-
-        #Bucle para el cambio de estilo en hoover de JUGAR
-        is_hoovered_1 = menu_3_box.collidepoint(mouse_pos)
-        is_hoovered_2 = menu_2_box.collidepoint(mouse_pos)
-        if is_hoovered_2:
-            current_surface = menu_text2_render_hoover
-            screen.blit(current_surface, ((width //2) - (menu_text2_render.get_width() //2), menu_center_y - (menu_height // 2)))
-        else:
-            current_surface = menu_text2_render
-            text_alpha = max(0, min(255, text_alpha))
-            current_surface.set_alpha(int(text_alpha))
-            screen.blit(current_surface, ((width //2) - (menu_text2_render.get_width() //2), menu_center_y - (menu_height // 2)))
-        #Captura del clic en Jugar
-        if mouse_left_down and is_hoovered_2:
-            game_state = "playing"
-        if mouse_left_down and is_hoovered_1:
-            running = False
+        #Se dibujan los botones
+        button_play.draw(screen)
+        button_exit.draw(screen)
 
         #Blit del titulo
         screen.blit(menu_text1_render, ((width //2) - (menu_text1_render.get_width() //2), title_y))
 
-        #Blit de SALIR
-        screen.blit(menu_text3_render, ((width //2) - (menu_text3_render.get_width() //2), \
-                        (menu_center_y - (menu_height // 2)) + menu_text2_render.get_height() + spacing))
-        
+        #Actualizacion de la pantalla
+        pygame.display.flip()
+
+        if button_play.is_clicked():
+            game_state = "playing"
+
+        if button_exit.is_clicked():
+            running = False
 
     if game_state == "playing":
+        
         #Registrar teclas pulsadas y mover las palas
         keys_state = pygame.key.get_pressed()
         if keys_state[pygame.K_w]:
