@@ -101,6 +101,10 @@ spacing = 50
 title_y = 90
 menu_center_y = height // 2
 
+#Colores
+WHITE = (255, 255, 255)
+GRAY = (180, 180, 180)
+HIGHLIGHT = (255, 255, 100) 
 
 
 
@@ -109,30 +113,36 @@ p2_name = "Juan"
 
 game_state = "menu"
 menu_text1 = "Bienvenido al Juego de Vero" 
-menu_text2 = "Pulsa  J  para jugar" 
-menu_text3 = "Pulsa ESC para salir"
+menu_text2 = "Jugar" 
+menu_text3 = "Salir"
 text_fading = False
 fading_speed = 255
 text_alpha = 0
 
-menu_text1_render = font.render(menu_text1, True, (255, 255, 255))
-menu_text2_render = font.render(menu_text2, True, (255, 255, 255))
-menu_text3_render = font.render(menu_text3, True, (255, 255, 255))
+menu_text1_render = font.render(menu_text1, True, WHITE)
+menu_text2_render = font.render(menu_text2, True, (255, 255, 255, 255))
+menu_text2_render_hoover = font.render(menu_text2, True, HIGHLIGHT)
+menu_text3_render = font.render(menu_text3, True, WHITE)
+
+mouse_left_down = False
 
 #Bucle del juego
 running = True
 while running:
     #Ajustar los fps
-    delta_time = game_clock.tick(240) / 1000
-
+    delta_time = game_clock.tick_busy_loop(240) / 1000
+    mouse_left_down = False
     #Captura de eventos y resolucion 
     events = pygame.event.get()
     for event in events:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_j:
                 game_state = "playing"
-            elif event.key == pygame.K_ESCAPE and game_state == "menu":
-                running = False
+            elif event.key == pygame.K_ESCAPE:
+                if game_state == "menu":
+                    running = False
+                elif game_state == "playing":
+                    game_state = "menu"
             elif event.key == pygame.K_g and game_state == "playing":
                 if ball_vel[0] == 0:
                     ball_vel[0] = ball_reset_speed if service else -ball_reset_speed
@@ -152,10 +162,17 @@ while running:
 
             ball_real = [width * 0.5, height * 0.5]
             ball_center = ball_real[:]
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == pygame.BUTTON_LEFT:
+                mouse_left_down = True
+            else:
+                mouse_left_down = False    
 
+    #Bucle del menu principal
     if game_state == "menu":
         screen.fill((0, 0, 0))
 
+        #Bucle de interpolacion del parpadeo del texto
         if text_fading:
             text_alpha += fading_speed * delta_time
             if text_alpha >= 255:
@@ -165,15 +182,43 @@ while running:
             if text_alpha <= 0:
                 text_fading = True
         
-        text_alpha = max(0, min(255, text_alpha))
-        menu_text2_render.set_alpha(text_alpha)
-
         menu_height = menu_text2_render.get_height() + menu_text3_render.get_height() + (spacing * 2)
-        screen.blit(menu_text1_render, ((width //2) - (menu_text1_render.get_width() //2), title_y))
-        screen.blit(menu_text2_render, ((width //2) - (menu_text2_render.get_width() //2), menu_center_y - (menu_height // 2)))
-        screen.blit(menu_text3_render, ((width //2) - (menu_text3_render.get_width() //2), (menu_center_y - (menu_height // 2)) + menu_text2_render.get_height() + spacing))
-        
 
+        #Inicializacion de las hitbox del menu
+        menu_2_pos = (width //2) - (menu_text2_render.get_width() //2), menu_center_y - (menu_height // 2)
+        menu_2_box = menu_text2_render.get_rect(topleft=menu_2_pos)
+        menu_3_pos = (width //2) - (menu_text3_render.get_width() //2), \
+                        (menu_center_y - (menu_height // 2)) + menu_text2_render.get_height() + spacing
+        menu_3_box = menu_text3_render.get_rect(topleft=menu_3_pos)
+
+        #Captura de la posicion del mouse
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        mouse_pos = (mouse_x, mouse_y)
+
+        #Bucle para el cambio de estilo en hoover de JUGAR
+        is_hoovered_1 = menu_3_box.collidepoint(mouse_pos)
+        is_hoovered_2 = menu_2_box.collidepoint(mouse_pos)
+        if is_hoovered_2:
+            current_surface = menu_text2_render_hoover
+            screen.blit(current_surface, ((width //2) - (menu_text2_render.get_width() //2), menu_center_y - (menu_height // 2)))
+        else:
+            current_surface = menu_text2_render
+            text_alpha = max(0, min(255, text_alpha))
+            current_surface.set_alpha(int(text_alpha))
+            screen.blit(current_surface, ((width //2) - (menu_text2_render.get_width() //2), menu_center_y - (menu_height // 2)))
+        #Captura del clic en Jugar
+        if mouse_left_down and is_hoovered_2:
+            game_state = "playing"
+        if mouse_left_down and is_hoovered_1:
+            running = False
+
+        #Blit del titulo
+        screen.blit(menu_text1_render, ((width //2) - (menu_text1_render.get_width() //2), title_y))
+
+        #Blit de SALIR
+        screen.blit(menu_text3_render, ((width //2) - (menu_text3_render.get_width() //2), \
+                        (menu_center_y - (menu_height // 2)) + menu_text2_render.get_height() + spacing))
+        
 
     if game_state == "playing":
         #Registrar teclas pulsadas y mover las palas
@@ -304,7 +349,7 @@ while running:
 
         #Marcador
         scores_text = f"{p1_name} - {p1_score}   {p2_name} - {p2_score}"
-        scoreboard = font.render(scores_text, True, (0, 0, 0), (255, 255, 255))
+        scoreboard = font.render(scores_text, True, (0, 0, 0), WHITE)
         
         #Interpolacion del renderizado de la bola para suavizar el movimiento
         alpha = 0.8
@@ -316,9 +361,9 @@ while running:
 
         #Dibuja las palas, la bola y el marcador
         screen.fill((0,0,0))
-        pygame.draw.rect(screen, (255,255,255), pala1)
-        pygame.draw.rect(screen, (255,255,255), pala2)
-        pygame.draw.circle(screen, (255,255,255), ball_center, BALL_RADIUS)
+        pygame.draw.rect(screen, WHITE, pala1)
+        pygame.draw.rect(screen, WHITE, pala2)
+        pygame.draw.circle(screen, WHITE, ball_center, BALL_RADIUS)
         screen.blit(scoreboard, (width//2 - scoreboard.get_width()//2, 20))
 
         
