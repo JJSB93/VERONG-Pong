@@ -119,7 +119,11 @@ p2_name = "Juan"
 button_play = None
 button_exit = None
 
-menu_text1_render = font.render(menu_text1, True, WHITE)
+button_continue = None
+button_backto_menu = None
+button_quit_game = None
+
+menu_title_render = font.render(menu_text1, True, WHITE)
 
 #Bucle del juego
 running = True
@@ -137,7 +141,9 @@ while running:
                 if game_state == "menu":
                     running = False
                 elif game_state == "playing":
-                    game_state = "menu"
+                    game_state = "paused"
+                elif game_state == "paused":
+                    game_state = "playing"
             elif event.key == pygame.K_g and game_state == "playing":
                 if ball_vel[0] == 0:
                     ball_vel[0] = ball_reset_speed if service else -ball_reset_speed
@@ -168,8 +174,8 @@ while running:
 
         #Inicializacion de los botones 
         if button_play is None:
-            button_play = Button("Jugar", menu_center_y - 20, font, WHITE, HIGHLIGHT, fade_enabled=True)
-            button_exit = Button("Salir", menu_center_y + 40, font, WHITE, HIGHLIGHT)
+            button_play = Button("Jugar", menu_center_y , font, WHITE, HIGHLIGHT, fade_enabled=True)
+            button_exit = Button("Salir", menu_center_y + 80, font, WHITE, HIGHLIGHT)
 
         #Vaciado de la pantalla
         screen.fill((0, 0, 0))
@@ -187,7 +193,7 @@ while running:
         button_exit.draw(screen)
 
         #Blit del titulo
-        screen.blit(menu_text1_render, ((width //2) - (menu_text1_render.get_width() //2), title_y))
+        screen.blit(menu_title_render, ((width //2) - (menu_title_render.get_width() //2), title_y))
 
         #Actualizacion de la pantalla
         pygame.display.flip()
@@ -198,8 +204,8 @@ while running:
         if button_exit.is_clicked():
             running = False
 
-    if game_state == "playing":
-        
+    elif game_state == "playing":
+
         #Registrar teclas pulsadas y mover las palas
         keys_state = pygame.key.get_pressed()
         if keys_state[pygame.K_w]:
@@ -345,9 +351,32 @@ while running:
         pygame.draw.circle(screen, WHITE, ball_center, BALL_RADIUS)
         screen.blit(scoreboard, (width//2 - scoreboard.get_width()//2, 20))
 
-        
+    elif game_state == "paused":
+        if button_continue == None:
+            button_continue = Button("Reanudar", menu_center_y, font, WHITE, HIGHLIGHT, fade_enabled=True)
+            button_backto_menu = Button("Volver al menú", menu_center_y + 80, font, WHITE, HIGHLIGHT)
+            button_exit = Button("Salir del juego", menu_center_y + 160, font, WHITE, HIGHLIGHT)
+        pause_buttons = [button_continue, button_backto_menu, button_exit]
 
-    
+        screen.fill((0, 0, 0))
+
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_left_down = pygame.mouse.get_pressed()[0]
+
+        for button in pause_buttons:
+            button.update(mouse_pos, mouse_left_down, delta_time, width)
+            button.draw(screen)
+
+        if pause_buttons[0].clicked:
+            game_state = "playing"
+        elif pause_buttons[1].clicked:
+            game_state = "menu"
+        elif pause_buttons[2].clicked:
+            running = False
+
+        pause_title = font.render("PAUSA", True, WHITE)
+        screen.blit(pause_title, (width//2 - pause_title.get_width()//2, title_y))
+
     #Actualiza la screen
     pygame.display.flip()
 
