@@ -1,6 +1,7 @@
 import pygame, math
 from button import Button
 from game_data import GameData
+from game_state_manager import GameStateManager
 
 EPSILON = 1e-9
 BALL_RADIUS = 10
@@ -65,10 +66,10 @@ def margins_collision(y, game_data, r, height):
 pygame.init()
 pygame.display.set_caption("Juego de Vero")
 
-#Inicializacion de la fuente para el texto 
-font = pygame.font.SysFont("Arial", 38)
-font_title = pygame.font.SysFont("consolas", 120, bold=True)
-font_big = pygame.font.SysFont("Arial", 45)
+# #Inicializacion de la fuente para el texto 
+# font = pygame.font.SysFont("Arial", 38)
+# font_title = pygame.font.SysFont("consolas", 120, bold=True)
+# font_big = pygame.font.SysFont("Arial", 45)
 
 #Declaro variables
 width = 1900
@@ -83,7 +84,10 @@ game_clock = pygame.time.Clock()
 ball_reset_speed = 400
 
 #Instancia de los datos del juego
-game_data = GameData(width, height, ball_reset_speed)
+#game_data = GameData(width, height, ball_reset_speed)
+
+#Instancia del manager de estados del juego
+manager = GameStateManager(screen, width, height, ball_reset_speed)
 
 #Posicion incial, tamano e inicializacion de las palas como rect
 pala_height = 100
@@ -103,10 +107,10 @@ pala2_y_real = pala2.y
 
 #Posicion inicial de la bola e inicializacion de la velocidad
 ball_center = (width * 0.5, height * 0.5)
-game_data.ball_real = list(ball_center)
-ball_render = game_data.ball_real[:]
-game_data.ball_vel = [0, 0]
-game_data.ball_speed = 400
+manager.game_data.ball_real = list(ball_center)
+ball_render = manager.game_data.ball_real[:]
+manager.game_data.ball_vel = [0, 0]
+manager.game_data.ball_speed = 400
 paddle_speed = 350
 
 #Rango del angulo de rebote 
@@ -117,10 +121,10 @@ b_angle_rad = 0.0
 service = False
 t_min = None
 
-#Medidas para colocar el menu
-spacing = 50
-title_y = 90
-menu_center_y = height // 2
+# #Medidas para colocar el menu
+# spacing = 50
+# title_y = 90
+# menu_center_y = height // 2
 
 #Estado al arrancar el juego
 game_state = "menu"
@@ -129,17 +133,17 @@ game_state = "menu"
 p1_name = "Vero"
 p2_name = "Juan"
 
-#Inicializacion de variables para los botones
-button_play = None
-button_exit = None
+# #Inicializacion de variables para los botones
+# button_play = None
+# button_exit = None
 
-button_continue = None
-button_backto_menu = None
-button_quit_game = None
+# button_continue = None
+# button_backto_menu = None
+# button_quit_game = None
 
-#Render del titulo
-menu_title = "V  E  R  O  N  G"
-menu_title_render = font_title.render(menu_title, True, WHITE)
+# #Render del titulo
+# menu_title = "V  E  R  O  N  G"
+# menu_title_render = font_title.render(menu_title, True, WHITE)
 
 #Bucle del juego
 running = True
@@ -149,7 +153,7 @@ while running:
     mouse_left_down = False
     #Captura de eventos y resolucion 
     events = pygame.event.get()
-    for event in events:
+    ''' for event in events:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_j:
                 game_state = "playing"
@@ -194,9 +198,9 @@ while running:
             if event.button == pygame.BUTTON_LEFT:
                 mouse_left_down = True
             else:
-                mouse_left_down = False    
+                mouse_left_down = False    '''
 
-    #Bucle del menu principal
+    '''#Bucle del menu principal
     if game_state == "menu":
 
         #Inicializacion de los botones 
@@ -229,9 +233,9 @@ while running:
             game_state = "playing"
 
         if button_exit.is_clicked():
-            running = False
+            running = False'''
 
-    elif game_state == "playing":
+    if game_state == "playing":
 
         #Registrar teclas pulsadas y mover las palas
         keys_state = pygame.key.get_pressed()
@@ -263,15 +267,15 @@ while running:
 
         #Loop de resolucion de colisiones por sub-intervalos dentro del frame
         remaining_time = delta_time
-        position = game_data.ball_real[:]
+        position = manager.game_data.ball_real[:]
         while remaining_time > EPSILON:
             #Calcular los timepos de colision
             collision_times = []
             collision_times_filtered = []
             t_min = None
-            t_pala1 = collision_detection(position, game_data, pala1, BALL_RADIUS)
-            t_pala2 = collision_detection(position, game_data, pala2, BALL_RADIUS)
-            t_margin = margins_collision(position[1], game_data, BALL_RADIUS, height)
+            t_pala1 = collision_detection(position, manager.game_data, pala1, BALL_RADIUS)
+            t_pala2 = collision_detection(position, manager.game_data, pala2, BALL_RADIUS)
+            t_margin = margins_collision(position[1], manager.game_data, BALL_RADIUS, height)
 
             #Calcular la colision mas proxima en el tiempo
             collision_times = [("t_pala1", t_pala1), ("t_pala2", t_pala2), ("t_margin", t_margin)]
@@ -285,19 +289,19 @@ while running:
                     t_min = collision
 
             if t_min == None:
-                position[0] += (game_data.ball_vel[0] * remaining_time)
-                position[1] += (game_data.ball_vel[1] * remaining_time)
+                position[0] += (manager.game_data.ball_vel[0] * remaining_time)
+                position[1] += (manager.game_data.ball_vel[1] * remaining_time)
                 remaining_time = 0
                 break
 
             #Colisiones y rebote con los margenes
             if t_min is not None and t_min[0] == "t_margin":
                 #Posicionamiento de la bola cuando colisiona    
-                position[0] += game_data.ball_vel[0] * t_min[1]
-                position[1] += game_data.ball_vel[1] * t_min[1]
+                position[0] += manager.game_data.ball_vel[0] * t_min[1]
+                position[1] += manager.game_data.ball_vel[1] * t_min[1]
 
                 #Inveriosn de la direccion de la bola
-                game_data.ball_vel[1] = -game_data.ball_vel[1]
+                manager.game_data.ball_vel[1] = -manager.game_data.ball_vel[1]
 
                 #Calculo del tiempo del restante del frame
                 remaining_time -= t_min[1]
@@ -306,17 +310,17 @@ while running:
             #Colision con Pala1
             elif t_min is not None and t_min[0] == "t_pala1":
                 #Posicionamiento de la bola cuando colisiona    
-                position[0] += game_data.ball_vel[0] * t_min[1]
-                position[1] += game_data.ball_vel[1] * t_min[1]
+                position[0] += manager.game_data.ball_vel[0] * t_min[1]
+                position[1] += manager.game_data.ball_vel[1] * t_min[1]
                 
                 #Ajuste de la velocidad y del angulo del rebote 
                 coll_point_y = relative_collision_point(position[1], pala1.centery, pala1.height)
                 bounce_angle = coll_point_y * max_bounce_angle
                 bounce_angle_rad = math.radians(bounce_angle)
-                if (game_data.ball_speed * 1.05) <= 800:
-                    game_data.ball_speed *= 1.05 
-                game_data.ball_vel[0] = game_data.ball_speed * math.cos(bounce_angle_rad)
-                game_data.ball_vel[1] = game_data.ball_speed * math.sin(bounce_angle_rad)
+                if (manager.game_data.ball_speed * 1.05) <= 800:
+                    manager.game_data.ball_speed *= 1.05 
+                manager.game_data.ball_vel[0] = manager.game_data.ball_speed * math.cos(bounce_angle_rad)
+                manager.game_data.ball_vel[1] = manager.game_data.ball_speed * math.sin(bounce_angle_rad)
                 
                 #Calculo del tiempo del restante del frame
                 remaining_time -= t_min[1]
@@ -325,49 +329,49 @@ while running:
             #Colision con pala2
             elif t_min is not None and t_min[0] == "t_pala2":
                 #Posicionamiento de la bola cuando colisiona
-                position[0] += game_data.ball_vel[0] * t_min[1]
-                position[1] += game_data.ball_vel[1] * t_min[1]
+                position[0] += manager.game_data.ball_vel[0] * t_min[1]
+                position[1] += manager.game_data.ball_vel[1] * t_min[1]
 
                 #Ajuste de la velocidad y del angulo del rebote 
                 coll_point_y = relative_collision_point(position[1], pala2.centery, pala2.height)
                 bounce_angle = coll_point_y * max_bounce_angle
                 bounce_angle_rad = math.radians(bounce_angle) 
-                if (game_data.ball_speed * 1.05) <= 800:
-                    game_data.ball_speed *= 1.05
-                game_data.ball_vel[0] = - game_data.ball_speed * math.cos(bounce_angle_rad)
-                game_data.ball_vel[1] = game_data.ball_speed * math.sin(bounce_angle_rad)
+                if (manager.game_data.ball_speed * 1.05) <= 800:
+                    manager.game_data.ball_speed *= 1.05
+                manager.game_data.ball_vel[0] = - manager.game_data.ball_speed * math.cos(bounce_angle_rad)
+                manager.game_data.ball_vel[1] = manager.game_data.ball_speed * math.sin(bounce_angle_rad)
                 
                 #Calculo del tiempo del restante del frame
                 remaining_time -= t_min[1]
                 continue
-        game_data.ball_real = position[:]
+        manager.game_data.ball_real = position[:]
 
         #Deteccion de puntos y reinicio de la posicion de la bola
-        if game_data.ball_real[0] < 0:
-            game_data.p2_score += 1
-            game_data.ball_vel = [0,0]
-            game_data.ball_real = [width / 2, height / 2]
-            ball_render = game_data.ball_real[:]
+        if manager.game_data.ball_real[0] < 0:
+            manager.game_data.p2_score += 1
+            manager.game_data.ball_vel = [0,0]
+            manager.game_data.ball_real = [width / 2, height / 2]
+            ball_render = manager.game_data.ball_real[:]
             service = False
-            game_data.ball_speed = ball_reset_speed
+            manager.game_data.ball_speed = ball_reset_speed
 
-        elif game_data.ball_real[0] > width:
-            game_data.p1_score += 1
-            game_data.ball_vel = [0,0]
-            game_data.ball_real = [width / 2, height / 2]
-            ball_render = game_data.ball_real[:]
+        elif manager.game_data.ball_real[0] > width:
+            manager.game_data.p1_score += 1
+            manager.game_data.ball_vel = [0,0]
+            manager.game_data.ball_real = [width / 2, height / 2]
+            ball_render = manager.game_data.ball_real[:]
             service = True
-            game_data.ball_speed = ball_reset_speed
+            manager.game_data.ball_speed = ball_reset_speed
 
         #Marcador
-        scores_text = f"{p1_name} - {game_data.p1_score}   {p2_name} - {game_data.p2_score}"
+        scores_text = f"{p1_name} - {manager.game_data.p1_score}   {p2_name} - {manager.game_data.p2_score}"
         scoreboard = font.render(scores_text, True, (0, 0, 0), WHITE)
         
         #Interpolacion del renderizado de la bola para suavizar el movimiento
         alpha = 0.8
-        ball_render[0] += (game_data.ball_real[0] - ball_render[0]) * alpha
-        ball_render[1] += (game_data.ball_real[1] - ball_render[1]) * alpha
-        ball_render = game_data.ball_real[:]
+        ball_render[0] += (manager.game_data.ball_real[0] - ball_render[0]) * alpha
+        ball_render[1] += (manager.game_data.ball_real[1] - ball_render[1]) * alpha
+        ball_render = manager.game_data.ball_real[:]
         ball_center = (int(ball_render[0]), int(ball_render[1]))
 
         #Dibuja las palas, la bola y el marcador
