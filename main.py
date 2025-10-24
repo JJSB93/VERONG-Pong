@@ -153,7 +153,7 @@ while running:
     mouse_left_down = False
     #Captura de eventos y resolucion 
     events = pygame.event.get()
-    ''' for event in events:
+    for event in events:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_j:
                 game_state = "playing"
@@ -198,9 +198,9 @@ while running:
             if event.button == pygame.BUTTON_LEFT:
                 mouse_left_down = True
             else:
-                mouse_left_down = False    '''
+                mouse_left_down = False   
 
-    '''#Bucle del menu principal
+    #Bucle del menu principal
     if game_state == "menu":
 
         #Inicializacion de los botones 
@@ -233,7 +233,7 @@ while running:
             game_state = "playing"
 
         if button_exit.is_clicked():
-            running = False'''
+            running = False
 
     if game_state == "playing":
 
