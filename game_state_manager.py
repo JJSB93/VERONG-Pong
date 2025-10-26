@@ -1,12 +1,13 @@
-import pygame
+import pygame, math
 from game_data import GameData
 from button import Button
 
 class GameStateManager:
     def __init__(self, screen, width, height, ball_reset_speed):
-        self.screen = screen
+        
         self.width = width
         self.height = height
+        self.screen = screen
         self.resolution = [width, height]
         self.ball_reset_speed = ball_reset_speed
 
@@ -176,7 +177,60 @@ class PlayingState:
         self.service = False
         self.t_min = None
 
-        
+##Funciones para detectar colision matematica
+    #Calcula el momento en el que ocurre la colision
+    def collision_x(self, x, vx, pala_edge): 
+        if vx > 0:
+            t = (pala_edge - self.BALL_RADIUS - x) / vx
+            return t
+        elif vx < 0:
+            t = (pala_edge + self.BALL_RADIUS - x) / vx
+            return t
+        elif vx == 0:
+            return None
+    
+    #Comprueba si en el momento "t", la pala colisiona con "y"
+    def collision_y_check(self, y, vy, pala_rect, t): 
+        top = pala_rect.top
+        bottom = pala_rect.bottom
+        y_in_collision = y + vy * t
+        return  top - self.BALL_RADIUS <= y_in_collision <= bottom + self.BALL_RADIUS
+
+    #Comprueba si hay colision con la pala y devuelve el momento dentro del frame donde ocurre la colision "t"
+    def collision_detection(self, position, pala_rect):  
+        x, y = position       
+        vx, vy = self.manager.game_data.ball_vel     
+        # La bola se mueve hacia la izquierda
+        if vx < 0:
+            t = self.collision_x(x, vx, pala_rect.right)
+            if t > 0 and self.collision_y_check(y, vy, pala_rect, t):
+                return t
+        # La bola se mueve hacia la derecha    
+        elif vx > 0:
+            t = self.collision_x(x, vx, pala_rect.left)
+            if t > 0 and self.collision_y_check(y, vy, pala_rect, t):
+                return t
+
+        return None
+    
+    #Funcion para calcular la distancia entre la colision y el centro de la pala
+    def relative_collision_point(self, position_y, pala_center_y, pala_height):
+        relative_y = (position_y - pala_center_y)
+        normalized_y = relative_y / (pala_height / 2)
+        return max(-1,min(normalized_y, 1))
+    
+    #Funcion para el calculo del momento de colision "t" con los bordes
+    def margins_collision(self, y):
+        vy = self.manager.game_data.ball_vel[1]
+        if vy > 0:
+            t = (self.manager.height - self.BALL_RADIUS - y) / vy
+            return t
+        elif vy < 0:
+            t = (self.BALL_RADIUS - y) / vy
+            return t
+        elif vy == 0:
+            return None
+##
 
     def handle_event(self, event):
         
@@ -186,12 +240,8 @@ class PlayingState:
             elif event.key == pygame.K_g:
                 if self.manager.game_data.ball_vel[0] == 0:
                     self.manager.game_data.ball_vel[0] = self.manager.game_data.ball_reset_speed if self.service else -self.manager.game_data.ball_reset_speed
+    
     def update(self, delta_time):
-
-        #Marcador
-        self.scores_text = f"{self.manager.game_data.p1_name} - {self.manager.game_data.p1_score}   {self.manager.game_data.p2_name} - {self.manager.game_data.p2_score}"
-        self.scoreboard = self.manager.font.render(self.scores_text, True, (0, 0, 0), self.manager.WHITE)
-
 
         #Registrar teclas pulsadas y mover las palas
         keys_state = pygame.key.get_pressed()
@@ -221,13 +271,123 @@ class PlayingState:
         self.pala1.y = int(self.pala1_y_real)
         self.pala2.y = int(self.pala2_y_real)
 
+        remaining_time = delta_time
+        position = self.manager.game_data.ball_real[:]
+        while remaining_time > self.EPSILON:
+            #Calcular los timepos de colision
+            collision_times = []
+            collision_times_filtered = []
+            t_min = None
+            t_pala1 = self.collision_detection(position, self.pala1)
+            t_pala2 = self.collision_detection(position, self.pala2)
+            t_margin = self.margins_collision(position[1])
+
+            #Calcular la colision mas proxima en el tiempo
+            collision_times = [("t_pala1", t_pala1), ("t_pala2", t_pala2), ("t_margin", t_margin)]
+
+            for collision in collision_times:
+                if collision[1] is not None and self.EPSILON < collision[1] <= (remaining_time - self.EPSILON):
+                    collision_times_filtered.append(collision)
+            
+            for collision in collision_times_filtered:
+                if t_min == None or collision[1] < t_min[1]:
+                    t_min = collision
+
+            if t_min == None:
+                position[0] += (self.manager.game_data.ball_vel[0] * remaining_time)
+                position[1] += (self.manager.game_data.ball_vel[1] * remaining_time)
+                remaining_time = 0
+                break
+
+            #Colisiones y rebote con los margenes
+            if t_min is not None and t_min[0] == "t_margin":
+                #Posicionamiento de la bola cuando colisiona    
+                position[0] += self.manager.game_data.ball_vel[0] * t_min[1]
+                position[1] += self.manager.game_data.ball_vel[1] * t_min[1]
+
+                #Inveriosn de la direccion de la bola
+                self.manager.game_data.ball_vel[1] = -self.manager.game_data.ball_vel[1]
+
+                #Calculo del tiempo del restante del frame
+                remaining_time -= t_min[1]
+                continue
+
+            #Colision con Pala1
+            elif t_min is not None and t_min[0] == "t_pala1":
+                #Posicionamiento de la bola cuando colisiona    
+                position[0] += self.manager.game_data.ball_vel[0] * t_min[1]
+                position[1] += self.manager.game_data.ball_vel[1] * t_min[1]
+                
+                #Ajuste de la velocidad y del angulo del rebote 
+                coll_point_y = self.relative_collision_point(position[1], self.pala1.centery, self.pala1.height)
+                bounce_angle = coll_point_y * self.max_bounce_angle
+                bounce_angle_rad = math.radians(bounce_angle)
+                if (self.manager.game_data.ball_speed * 1.05) <= 800:
+                    self.manager.game_data.ball_speed *= 1.05 
+                self.manager.game_data.ball_vel[0] = self.manager.game_data.ball_speed * math.cos(bounce_angle_rad)
+                self.manager.game_data.ball_vel[1] = self.manager.game_data.ball_speed * math.sin(bounce_angle_rad)
+                
+                #Calculo del tiempo del restante del frame
+                remaining_time -= t_min[1]
+                continue
+
+            #Colision con pala2
+            elif t_min is not None and t_min[0] == "t_pala2":
+                #Posicionamiento de la bola cuando colisiona
+                position[0] += self.manager.game_data.ball_vel[0] * t_min[1]
+                position[1] += self.manager.game_data.ball_vel[1] * t_min[1]
+
+                #Ajuste de la velocidad y del angulo del rebote 
+                coll_point_y = self.relative_collision_point(position[1], self.pala2.centery, self.pala2.height)
+                bounce_angle = coll_point_y * self.max_bounce_angle
+                bounce_angle_rad = math.radians(bounce_angle) 
+                if (self.manager.game_data.ball_speed * 1.05) <= 800:
+                    self.manager.game_data.ball_speed *= 1.05
+                self.manager.game_data.ball_vel[0] = - self.manager.game_data.ball_speed * math.cos(bounce_angle_rad)
+                self.manager.game_data.ball_vel[1] = self.manager.game_data.ball_speed * math.sin(bounce_angle_rad)
+                
+                #Calculo del tiempo del restante del frame
+                remaining_time -= t_min[1]
+                continue
+        self.manager.game_data.ball_real = position[:]
+
+        #Deteccion de puntos y reinicio de la posicion de la bola
+        if self.manager.game_data.ball_real[0] < 0:
+            self.manager.game_data.p2_score += 1
+            self.manager.game_data.ball_vel = [0,0]
+            self.manager.game_data.ball_real = [self.manager.width / 2, self.manager.height / 2]
+            self.ball_render = self.manager.game_data.ball_real[:]
+            self.service = False
+            self.manager.game_data.ball_speed = self.manager.game_data.ball_reset_speed
+
+        elif self.manager.game_data.ball_real[0] > self.manager.width:
+            self.manager.game_data.p1_score += 1
+            self.manager.game_data.ball_vel = [0,0]
+            self.manager.game_data.ball_real = [self.manager.width / 2, self.manager.height / 2]
+            self.ball_render = self.manager.game_data.ball_real[:]
+            self.service = True
+            self.manager.game_data.ball_speed = self.manager.game_data.ball_reset_speed
+
+
     def draw(self):
         self.manager.screen.fill((0, 0, 0))  # ← Pantalla negra temporal
 
+        #Marcador
+        scores_text = f"{self.manager.game_data.p1_name} - {self.manager.game_data.p1_score}   {self.manager.game_data.p2_name} - {self.manager.game_data.p2_score}"
+        scoreboard = self.manager.font.render(scores_text, True, (0, 0, 0), self.manager.WHITE)
+
+        #Interpolacion del renderizado de la bola para suavizar el movimiento
+        alpha = 0.8
+        ball_render = self.manager.game_data.ball_real[:]
+        ball_render[0] += (self.manager.game_data.ball_real[0] - ball_render[0]) * alpha
+        ball_render[1] += (self.manager.game_data.ball_real[1] - ball_render[1]) * alpha
+        
+        ball_center = (int(ball_render[0]), int(ball_render[1]))
+
         pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala1)
         pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala2)
-        pygame.draw.circle(self.manager.screen, self.manager.WHITE, self.ball_center, self.BALL_RADIUS)
-        self.manager.screen.blit(self.scoreboard, (self.manager.width//2 - self.scoreboard.get_width()//2, 20))
+        pygame.draw.circle(self.manager.screen, self.manager.WHITE, ball_center, self.BALL_RADIUS)
+        self.manager.screen.blit(scoreboard, (self.manager.width//2 - scoreboard.get_width()//2, 20))
         pygame.display.flip()
 
 class PausedState:
