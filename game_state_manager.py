@@ -162,7 +162,7 @@ class PlayingState:
         #Posicion inicial de la bola e inicializacion de la velocidad
         self.EPSILON = 1e-9
         self.BALL_RADIUS = 10
-        self.ball_center = (self.manager.width * 0.5, self.manager.height * 0.5)
+        self.ball_center = [self.manager.width * 0.5, self.manager.height * 0.5]
         self.manager.game_data.ball_real = list(self.ball_center)
         self.ball_render = self.manager.game_data.ball_real[:]
         self.manager.game_data.ball_vel = [0, 0]
@@ -214,9 +214,9 @@ class PlayingState:
         return None
     
     #Funcion para calcular la distancia entre la colision y el centro de la pala
-    def relative_collision_point(self, position_y, pala_center_y, pala_height):
+    def relative_collision_point(self, position_y, pala_center_y):
         relative_y = (position_y - pala_center_y)
-        normalized_y = relative_y / (pala_height / 2)
+        normalized_y = relative_y / (self.pala_height / 2)
         return max(-1,min(normalized_y, 1))
     
     #Funcion para el calculo del momento de colision "t" con los bordes
@@ -319,7 +319,7 @@ class PlayingState:
                 position[1] += self.manager.game_data.ball_vel[1] * t_min[1]
                 
                 #Ajuste de la velocidad y del angulo del rebote 
-                coll_point_y = self.relative_collision_point(position[1], self.pala1.centery, self.pala1.height)
+                coll_point_y = self.relative_collision_point(position[1], self.pala1.centery)
                 bounce_angle = coll_point_y * self.max_bounce_angle
                 bounce_angle_rad = math.radians(bounce_angle)
                 if (self.manager.game_data.ball_speed * 1.05) <= 800:
@@ -338,7 +338,7 @@ class PlayingState:
                 position[1] += self.manager.game_data.ball_vel[1] * t_min[1]
 
                 #Ajuste de la velocidad y del angulo del rebote 
-                coll_point_y = self.relative_collision_point(position[1], self.pala2.centery, self.pala2.height)
+                coll_point_y = self.relative_collision_point(position[1], self.pala2.centery)
                 bounce_angle = coll_point_y * self.max_bounce_angle
                 bounce_angle_rad = math.radians(bounce_angle) 
                 if (self.manager.game_data.ball_speed * 1.05) <= 800:
@@ -350,6 +350,7 @@ class PlayingState:
                 remaining_time -= t_min[1]
                 continue
         self.manager.game_data.ball_real = position[:]
+        self.ball_center = self.manager.game_data.ball_real
 
         #Deteccion de puntos y reinicio de la posicion de la bola
         if self.manager.game_data.ball_real[0] < 0:
@@ -378,11 +379,10 @@ class PlayingState:
 
         #Interpolacion del renderizado de la bola para suavizar el movimiento
         alpha = 0.8
-        ball_render = self.manager.game_data.ball_real[:]
-        ball_render[0] += (self.manager.game_data.ball_real[0] - ball_render[0]) * alpha
-        ball_render[1] += (self.manager.game_data.ball_real[1] - ball_render[1]) * alpha
+        self.ball_render[0] += (self.manager.game_data.ball_real[0] - self.ball_render[0]) * alpha
+        self.ball_render[1] += (self.manager.game_data.ball_real[1] - self.ball_render[1]) * alpha
         
-        ball_center = (int(ball_render[0]), int(ball_render[1]))
+        ball_center = (int(self.ball_render[0]), int(self.ball_render[1]))
 
         pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala1)
         pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala2)
