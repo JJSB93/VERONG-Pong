@@ -8,7 +8,6 @@ class GameStateManager:
         self.width = width
         self.height = height
         self.screen = screen
-        self.resolution = [width, height]
         self.ball_reset_speed = ball_reset_speed
 
         #Colores
@@ -46,15 +45,14 @@ class GameStateManager:
 
     def handle_event(self, event):
 
-        if self.current_state:
-            current = self.game_states[self.current_state]
-            current.handle_event(event)
+        if self.current_state in self.game_states:
+            self.game_states[self.current_state].handle_event(event)
 
         if event.type == pygame.VIDEORESIZE:
             self.width, self.height = event.w, event.h
             self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
-            if self.current_state == "menu":
-                self.game_states["menu"].resize(self.width, self.height)
+            if self.current_state in self.game_states:
+                self.game_states[self.current_state].resize(self.width, self.height)
             
 
     def update(self, delta_time):
@@ -171,7 +169,6 @@ class PlayingState:
 
         #Rango del angulo de rebote 
         self.max_bounce_angle = 45
-        self.b_angle_rad = 0.0
 
         #Inicializacion del saque y de la variable que almacena la colision mas cercana
         self.service = False
@@ -390,13 +387,61 @@ class PlayingState:
         self.manager.screen.blit(scoreboard, (self.manager.width//2 - scoreboard.get_width()//2, 20))
         pygame.display.flip()
 
+    def resize(self, width, height):
+        self.pala1_x = int(width * 0.15)
+        self.pala2_x = int(width - (width * 0.15) - self.pala_width)
+        self.pala1_y = int((height * 0.5) - (self.pala_height / 2))
+        self.pala2_y = int((height * 0.5) - (self.pala_height / 2))
+        self.pala1 = pygame.Rect(self.pala1_x, self.pala1_y, self.pala_width, self.pala_height)
+        self.pala2 = pygame.Rect(self.pala2_x, self.pala2_y, self.pala_width, self.pala_height)
+        self.pala1_y_real = self.pala1.y
+        self.pala2_y_real = self.pala2.y
+        self.manager.game_data.ball_real = [width * 0.5, height * 0.5]
+        self.ball_center = self.manager.game_data.ball_real[:]
+        self.ball_render = self.manager.game_data.ball_real[:]
+        self.manager.game_data.ball_vel = [0, 0]
+
 class PausedState:
     def __init__(self, manager):
         self.manager = manager
+
+        self.button_continue = Button("Reanudar", self.manager.menu_center_y, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
+        self.button_backto_menu = Button("Volver al menú", self.manager.menu_center_y + 80, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
+        self.button_exit = Button("Salir del juego", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
+        self.pause_buttons = [self.button_continue, self.button_backto_menu, self.button_exit]
+
+        self.pause_title = self.manager.font_title.render("PAUSA", True, self.manager.WHITE)
+
+    
     def handle_event(self, event):
-        pass
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.manager.change_state("playing")
+        
+            
     def update(self, delta_time):
-        pass
+        self.mouse_pos = pygame.mouse.get_pos()
+        self.mouse_click = pygame.mouse.get_pressed()[0]
+
+        for button in self.pause_buttons:
+            button.update(self.mouse_pos, self.mouse_click, delta_time, self.manager.width)
+
+        if self.button_continue.is_clicked():
+            self.manager.change_state("playing")
+        elif self.button_backto_menu.is_clicked():
+            self.manager.game_data.reset(self.manager.width, self.manager.height)
+            self.manager.change_state("menu")
+        elif self.button_exit.is_clicked():
+            pygame.quit()
+            exit()
+
+        
+
     def draw(self):
         self.manager.screen.fill((0, 0, 0))  # ← Pantalla negra temporal
+        for button in self.pause_buttons:
+            button.draw(self.manager.screen)
+        self.manager.screen.blit(self.pause_title, (self.manager.width//2 - self.pause_title.get_width()//2, self.manager.title_y))
+
+
         pygame.display.flip()
