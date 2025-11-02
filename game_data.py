@@ -1,3 +1,4 @@
+#Clase para guardar los datos de la partida
 class GameData:
     def __init__(self, width, height, ball_reset_speed):
         self.ball_reset_speed = ball_reset_speed

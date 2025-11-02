@@ -1,6 +1,7 @@
 import pygame, math
 from game_data import GameData
 from button import Button
+from text_input import TextInput
 
 class GameStateManager:
     def __init__(self, screen, width, height, ball_reset_speed):
@@ -13,6 +14,7 @@ class GameStateManager:
         #Colores
         self.WHITE = (255, 255, 255)
         self.GRAY = (180, 180, 180)
+        self.LIGHT_GRAY = (211, 211, 211)
         self.HIGHLIGHT = (255, 255, 100)
 
         #Medidas para colocar el menu
@@ -22,14 +24,17 @@ class GameStateManager:
 
         #Inicializacion de la fuente para el texto 
         self.font = pygame.font.SysFont("Arial", 38)
+        # print(self.font)
         self.font_title = pygame.font.SysFont("consolas", 120, bold=True)
+        
         self.font_big = pygame.font.SysFont("Arial", 45)
-
+        # print(self.font_big)
         self.game_data = GameData(width, height, ball_reset_speed)
 
         self.game_states = {
 
             "menu": MenuState(self),
+            "name_input": NameInputState(self),
             "playing": PlayingState(self),
             "paused": PausedState(self)
         }
@@ -84,10 +89,14 @@ class MenuState:
 
     def handle_event(self, event):
 
+        if self.button_play is not None:
+            self.button_play.handle_event(event)
+        if self.button_exit is not None:
+            self.button_exit.handle_event(event)
+
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_j:
-                self.manager.change_state("playing")
-
+                self.manager.change_state("name_input")
             elif event.key == pygame.K_ESCAPE:
                     pygame.quit()
                     exit()
@@ -99,14 +108,14 @@ class MenuState:
 
         #Captura de la posicion y del clic del mouse
         mouse_pos = pygame.mouse.get_pos()
-        mouse_click = pygame.mouse.get_pressed()[0]
+        # mouse_click = pygame.mouse.get_pressed()[0]
 
         #Actualizacion de los botones
-        self.button_play.update(mouse_pos, mouse_click, delta_time, self.manager.width)
-        self.button_exit.update(mouse_pos, mouse_click, delta_time, self.manager.width)
+        self.button_play.update(mouse_pos, delta_time, self.manager.width)
+        self.button_exit.update(mouse_pos, delta_time, self.manager.width)
 
         if self.button_play.is_clicked():
-            self.manager.change_state("playing")
+            self.manager.change_state("name_input")
 
         if self.button_exit.is_clicked():
             pygame.quit()
@@ -136,6 +145,67 @@ class MenuState:
         if self.button_play is not None:
             self.button_play = Button("Jugar", self.menu_center_y, self.manager.font_big, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
             self.button_exit = Button("Salir", self.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
+
+class NameInputState:
+    def __init__(self, manager):
+        self.manager = manager
+
+        self.button_continue = Button("Continuar", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
+        self.button_backto_menu = Button("Volver al menú", self.manager.menu_center_y + 300, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
+
+        # self.mouse_click = False
+
+        self.input1 = TextInput(self.manager, relative_y=-60)
+        self.input2 = TextInput(self.manager, relative_y=0)
+
+        
+    def handle_event(self, event):
+        click_in_1 = self.input1.handle_event(event)
+        click_in_2 = self.input2.handle_event(event)
+
+        if self.button_continue is not None:
+            self.button_continue.handle_event(event)
+        if self.button_backto_menu is not None:
+            self.button_backto_menu.handle_event(event)
+
+        if click_in_1:
+            self.input1.active = True
+            self.input2.active = False
+        elif click_in_2:
+            self.input2.active = True
+            self.input1.active = False
+        
+
+
+    def update(self, delta_time):
+        # print(self.manager.font)
+        # if self.button_continue == None:
+        #     self.button_continue = Button("Continuar", self.manager.menu_center_y, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
+        #     self.button_backto_menu = Button("Volver al menú", self.manager.menu_center_y + 80, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
+        # print(self.button_continue)
+        mouse_pos = pygame.mouse.get_pos()
+        # mouse_click = pygame.mouse.get_pressed()[0]
+
+        self.button_continue.update(mouse_pos, delta_time, self.manager.width)
+        self.button_backto_menu.update(mouse_pos, delta_time, self.manager.width)
+
+        if self.button_continue.is_clicked():
+            print(self.button_continue.is_clicked())
+            self.manager.change_state("playing")
+
+        if self.button_backto_menu.is_clicked():
+            self.manager.game_data.reset(self.manager.width, self.manager.height)
+            self.manager.change_state("menu")
+        
+    def draw(self):
+        self.manager.screen.fill((0, 0, 0))
+        
+        self.input1.draw()
+        self.input2.draw()
+        self.button_continue.draw(self.manager.screen)
+        self.button_backto_menu.draw(self.manager.screen)
+        pygame.display.flip()
+
 
 class PlayingState:
     def __init__(self, manager):
@@ -283,7 +353,7 @@ class PlayingState:
             collision_times = [("t_pala1", t_pala1), ("t_pala2", t_pala2), ("t_margin", t_margin)]
 
             for collision in collision_times:
-                if collision[1] is not None and self.EPSILON < collision[1] <= (remaining_time - self.EPSILON):
+                if collision[1] is not None and self.EPSILON < collision[1] <= (remaining_time):
                     collision_times_filtered.append(collision)
             
             for collision in collision_times_filtered:
@@ -405,28 +475,41 @@ class PausedState:
     def __init__(self, manager):
         self.manager = manager
 
-        self.button_continue = Button("Reanudar", self.manager.menu_center_y, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
-        self.button_backto_menu = Button("Volver al menú", self.manager.menu_center_y + 80, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
-        self.button_exit = Button("Salir del juego", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
-        self.pause_buttons = [self.button_continue, self.button_backto_menu, self.button_exit]
+        self.button_keep_playing = None
+        self.button_backto_menu = None
+        self.button_exit = None
+        self.pause_buttons = []
 
         self.pause_title = self.manager.font_title.render("PAUSA", True, self.manager.WHITE)
 
     
     def handle_event(self, event):
+        if self.button_keep_playing is not None:
+            self.button_keep_playing.handle_event(event)
+        if self.button_backto_menu is not None:
+            self.button_backto_menu.handle_event(event)
+        if self.button_exit is not None:
+            self.button_exit.handle_event(event)
+
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 self.manager.change_state("playing")
         
             
     def update(self, delta_time):
+        if self.button_keep_playing == None:
+            self.button_keep_playing = Button("Reanudar", self.manager.menu_center_y, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
+            self.button_backto_menu = Button("Volver al menú", self.manager.menu_center_y + 80, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
+            self.button_exit = Button("Salir del juego", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
+            self.pause_buttons = [self.button_keep_playing, self.button_backto_menu, self.button_exit]
+
         self.mouse_pos = pygame.mouse.get_pos()
-        self.mouse_click = pygame.mouse.get_pressed()[0]
+        # self.mouse_click = pygame.mouse.get_pressed()[0]
 
         for button in self.pause_buttons:
-            button.update(self.mouse_pos, self.mouse_click, delta_time, self.manager.width)
+            button.update(self.mouse_pos, delta_time, self.manager.width)
 
-        if self.button_continue.is_clicked():
+        if self.button_keep_playing.is_clicked():
             self.manager.change_state("playing")
         elif self.button_backto_menu.is_clicked():
             self.manager.game_data.reset(self.manager.width, self.manager.height)

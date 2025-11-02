@@ -13,8 +13,8 @@ manager = GameStateManager(screen, 1920, 1080, 400)
 clock = pygame.time.Clock()
 running = True
 while running == True:
-    delta_time = clock.tick_busy_loop(140) / 1000
-
+    delta_time = clock.tick(240) / 1000
+    pygame.event.pump()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
