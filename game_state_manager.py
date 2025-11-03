@@ -193,7 +193,6 @@ class NameInputState:
         self.manager.game_data.p2_name = self.input2.text
 
         if self.button_continue.is_clicked():
-            print(self.button_continue.is_clicked())
             self.manager.change_state("playing")
 
         if self.button_backto_menu.is_clicked():
@@ -356,7 +355,7 @@ class PlayingState:
             collision_times = [("t_pala1", t_pala1), ("t_pala2", t_pala2), ("t_margin", t_margin)]
 
             for collision in collision_times:
-                if collision[1] is not None and self.EPSILON < collision[1] <= (remaining_time):
+                if collision[1] is not None and self.EPSILON < collision[1] <= (remaining_time + self.EPSILON):
                     collision_times_filtered.append(collision)
             
             for collision in collision_times_filtered:
@@ -419,6 +418,17 @@ class PlayingState:
                 #Calculo del tiempo del restante del frame
                 remaining_time -= t_min[1]
                 continue
+        # Comprobación de seguridad para evitar atravesar palas
+        if (self.pala1.collidepoint(position[0] - self.BALL_RADIUS, position[1]) or 
+            self.pala2.collidepoint(position[0] + self.BALL_RADIUS, position[1])):
+            # Corregir posición y velocidad
+            if position[0] < self.manager.width / 2:
+                position[0] = self.pala1.right + self.BALL_RADIUS
+                self.manager.game_data.ball_vel[0] = abs(self.manager.game_data.ball_vel[0])
+            else:
+                position[0] = self.pala2.left - self.BALL_RADIUS
+                self.manager.game_data.ball_vel[0] = -abs(self.manager.game_data.ball_vel[0])
+
         self.manager.game_data.ball_real = position[:]
         self.ball_center = self.manager.game_data.ball_real
 
@@ -456,7 +466,7 @@ class PlayingState:
 
         for y in range(0, self.manager.height, 40):
             pygame.draw.rect(self.manager.screen, self.manager.WHITE, 
-                     (self.manager.width // 2 - 5, y, 10, 20))
+                     (self.manager.width // 2 - 5, y, 5, 20))
         pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala1)
         pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala2)
         pygame.draw.circle(self.manager.screen, self.manager.WHITE, ball_center, self.BALL_RADIUS)
