@@ -16,6 +16,8 @@ class GameStateManager:
         self.GRAY = (180, 180, 180)
         self.LIGHT_GRAY = (211, 211, 211)
         self.HIGHLIGHT = (255, 255, 100)
+        self.BLACK = (0, 0, 0)
+        self.TXT_RED = (166, 75, 51)
 
         #Medidas para colocar el menu
         self.spacing = 50
@@ -24,11 +26,10 @@ class GameStateManager:
 
         #Inicializacion de la fuente para el texto 
         self.font = pygame.font.SysFont("Arial", 38)
-        # print(self.font)
+        self.font_text = pygame.font.SysFont("consolas", 32)
         self.font_title = pygame.font.SysFont("consolas", 120, bold=True)
-        
         self.font_big = pygame.font.SysFont("Arial", 45)
-        # print(self.font_big)
+
         self.game_data = GameData(width, height, ball_reset_speed)
 
         self.game_states = {
@@ -72,7 +73,6 @@ class GameStateManager:
             current = self.game_states[self.current_state]
             current.draw()
 
-
 class MenuState:
     def __init__(self, manager):
         self.manager = manager
@@ -106,9 +106,8 @@ class MenuState:
             self.button_play = Button("Jugar", self.manager.menu_center_y , self.manager.font_big, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
             self.button_exit = Button("Salir", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
 
-        #Captura de la posicion y del clic del mouse
+        #Captura de la posicion del mouse
         mouse_pos = pygame.mouse.get_pos()
-        # mouse_click = pygame.mouse.get_pressed()[0]
 
         #Actualizacion de los botones
         self.button_play.update(mouse_pos, delta_time, self.manager.width)
@@ -125,7 +124,7 @@ class MenuState:
     def draw(self):
 
         #Vaciado de la pantalla
-        self.screen.fill((0, 0, 0))
+        self.screen.fill(self.manager.BLACK)
 
         #Se dibujan los botones
         self.button_play.draw(self.screen)
@@ -153,8 +152,6 @@ class NameInputState:
         self.button_continue = Button("Continuar", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
         self.button_backto_menu = Button("Volver al menú", self.manager.menu_center_y + 300, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
 
-        # self.mouse_click = False
-
         self.input1 = TextInput(self.manager, relative_y=-60)
         self.input2 = TextInput(self.manager, relative_y=0)
 
@@ -174,20 +171,26 @@ class NameInputState:
         elif click_in_2:
             self.input2.active = True
             self.input1.active = False
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:
+                self.manager.change_state("playing")
+            elif event.key == pygame.K_ESCAPE:
+                    self.manager.game_data.reset(self.manager.width, self.manager.height)
+                    self.manager.change_state("menu")
         
 
 
     def update(self, delta_time):
-        # print(self.manager.font)
-        # if self.button_continue == None:
-        #     self.button_continue = Button("Continuar", self.manager.menu_center_y, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
-        #     self.button_backto_menu = Button("Volver al menú", self.manager.menu_center_y + 80, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
-        # print(self.button_continue)
         mouse_pos = pygame.mouse.get_pos()
-        # mouse_click = pygame.mouse.get_pressed()[0]
 
         self.button_continue.update(mouse_pos, delta_time, self.manager.width)
         self.button_backto_menu.update(mouse_pos, delta_time, self.manager.width)
+
+        self.input1.update(delta_time)
+        self.manager.game_data.p1_name = self.input1.text
+        self.input2.update(delta_time)
+        self.manager.game_data.p2_name = self.input2.text
 
         if self.button_continue.is_clicked():
             print(self.button_continue.is_clicked())
@@ -196,16 +199,16 @@ class NameInputState:
         if self.button_backto_menu.is_clicked():
             self.manager.game_data.reset(self.manager.width, self.manager.height)
             self.manager.change_state("menu")
-        
+
+
     def draw(self):
-        self.manager.screen.fill((0, 0, 0))
+        self.manager.screen.fill(self.manager.BLACK)
         
         self.input1.draw()
         self.input2.draw()
         self.button_continue.draw(self.manager.screen)
         self.button_backto_menu.draw(self.manager.screen)
         pygame.display.flip()
-
 
 class PlayingState:
     def __init__(self, manager):
@@ -438,11 +441,11 @@ class PlayingState:
 
 
     def draw(self):
-        self.manager.screen.fill((0, 0, 0))  # ← Pantalla negra temporal
+        self.manager.screen.fill(self.manager.BLACK)
 
         #Marcador
         scores_text = f"{self.manager.game_data.p1_name} - {self.manager.game_data.p1_score}   {self.manager.game_data.p2_name} - {self.manager.game_data.p2_score}"
-        scoreboard = self.manager.font.render(scores_text, True, (0, 0, 0), self.manager.WHITE)
+        scoreboard = self.manager.font.render(scores_text, True, self.manager.BLACK, self.manager.WHITE)
 
         #Interpolacion del renderizado de la bola para suavizar el movimiento
         alpha = 0.8
@@ -451,6 +454,9 @@ class PlayingState:
         
         ball_center = (int(self.ball_render[0]), int(self.ball_render[1]))
 
+        for y in range(0, self.manager.height, 40):
+            pygame.draw.rect(self.manager.screen, self.manager.WHITE, 
+                     (self.manager.width // 2 - 5, y, 10, 20))
         pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala1)
         pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala2)
         pygame.draw.circle(self.manager.screen, self.manager.WHITE, ball_center, self.BALL_RADIUS)
@@ -504,7 +510,6 @@ class PausedState:
             self.pause_buttons = [self.button_keep_playing, self.button_backto_menu, self.button_exit]
 
         self.mouse_pos = pygame.mouse.get_pos()
-        # self.mouse_click = pygame.mouse.get_pressed()[0]
 
         for button in self.pause_buttons:
             button.update(self.mouse_pos, delta_time, self.manager.width)
@@ -521,7 +526,7 @@ class PausedState:
         
 
     def draw(self):
-        self.manager.screen.fill((0, 0, 0))  # ← Pantalla negra temporal
+        self.manager.screen.fill(self.manager.BLACK)
         for button in self.pause_buttons:
             button.draw(self.manager.screen)
         self.manager.screen.blit(self.pause_title, (self.manager.width//2 - self.pause_title.get_width()//2, self.manager.title_y))

@@ -22,9 +22,6 @@ class Button:
         self._pressed_inside = False
         self._was_clicked = False
         self.is_hovered = False
-        # self.clicked = False
-        # self.was_clicked_last_frame = False
-        # self.current_click = False
   
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:           
@@ -36,11 +33,8 @@ class Button:
             self._pressed_inside = False
 
     def update(self, mouse_pos, delta_time, screen_width):
-        # self.current_click = mouse_click
-        # self.clicked = False
         self.rect.centerx = screen_width // 2
 
-        # self.clicked = mouse_click
         self.is_hovered = self.rect.collidepoint(mouse_pos)
         
         if self.fade_enabled and not self.is_hovered:
@@ -55,7 +49,6 @@ class Button:
         if self.is_hovered:
             self.alpha = 255
 
-        # self.was_clicked_last_frame = self.current_click
 
     def draw(self, screen):
         surface = self.hover_surface if self.is_hovered else self.base_surface
@@ -65,8 +58,6 @@ class Button:
         screen.blit(render_surface, render_surface.get_rect(center=self.rect.center))
 
     def is_clicked(self):
-        # click_in_frame = self.current_click and not self.was_clicked_last_frame
-        # return click_in_frame and self.is_hovered
         
         if self._was_clicked:
             self._was_clicked = False
