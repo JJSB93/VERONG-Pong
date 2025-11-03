@@ -2,6 +2,7 @@ import pygame, math
 from game_data import GameData
 from button import Button
 from text_input import TextInput
+from splash_state import SplashState
 
 class GameStateManager:
     def __init__(self, screen, width, height, ball_reset_speed):
@@ -30,36 +31,46 @@ class GameStateManager:
         self.font_title = pygame.font.SysFont("consolas", 120, bold=True)
         self.font_big = pygame.font.SysFont("Arial", 45)
 
+
         self.game_data = GameData(width, height, ball_reset_speed)
 
         self.game_states = {
-
+            "splash": SplashState(self),
             "menu": MenuState(self),
             "name_input": NameInputState(self),
             "playing": PlayingState(self),
             "paused": PausedState(self)
         }
 
-        self.current_state = "menu"
+        self.current_state = "splash"
 
     def change_state(self, new_state_name):
 
         if new_state_name in self.game_states:
             self.current_state = new_state_name
+            # Preparar el layout del nuevo estado antes del primer draw
+            state = self.game_states[new_state_name]
+            if hasattr(state, "on_enter"):
+                state.on_enter()
         else:
             print(f"Error el estado {new_state_name} no existe")
 
     def handle_event(self, event):
 
-        if self.current_state in self.game_states:
-            self.game_states[self.current_state].handle_event(event)
-
+        # Resize: actualizar ventana y pedir recolocar al estado activo
         if event.type == pygame.VIDEORESIZE:
             self.width, self.height = event.w, event.h
             self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
-            if self.current_state in self.game_states:
-                self.game_states[self.current_state].resize(self.width, self.height)
+            self.menu_center_y = self.height // 2
+            state = self.game_states.get(self.current_state)
+            if state and hasattr(state, "resize"):
+                state.resize(self.width, self.height)
             
+
+        # Pasar el evento al estado actual
+        state = self.game_states.get(self.current_state)
+        if state and hasattr(state, "handle_event"):
+            state.handle_event(event)
 
     def update(self, delta_time):
 
@@ -72,6 +83,8 @@ class GameStateManager:
         if self.current_state:
             current = self.game_states[self.current_state]
             current.draw()
+        # Un único flip por frame para todos los estados
+        pygame.display.flip()
 
 class MenuState:
     def __init__(self, manager):
@@ -84,8 +97,21 @@ class MenuState:
         self.menu_title = "V  E  R  O  N  G"
         self.menu_title_render = self.manager.font_title.render(self.menu_title, True, self.manager.WHITE)
 
-        self.button_play = None
-        self.button_exit = None
+        self.button_play = Button("Jugar", self.manager.menu_center_y , self.manager.font_big, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
+        self.button_exit = Button("Salir", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
+
+    def on_enter(self):
+        # Asegura colocación correcta antes del primer draw
+        self.layout()
+
+    def layout(self):
+        # Centrar horizontalmente y posicionar vertical con pos_y actual
+        if self.button_play is not None and hasattr(self.button_play, "rect"):
+            self.button_play.rect.centerx = self.manager.width // 2
+            self.button_play.rect.centery = self.manager.menu_center_y
+        if self.button_exit is not None and hasattr(self.button_exit, "rect"):
+            self.button_exit.rect.centerx = self.manager.width // 2
+            self.button_exit.rect.centery = self.manager.menu_center_y + 240
 
     def handle_event(self, event):
 
@@ -102,9 +128,9 @@ class MenuState:
                     exit()
 
     def update(self, delta_time):
-        if self.button_play == None:
-            self.button_play = Button("Jugar", self.manager.menu_center_y , self.manager.font_big, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
-            self.button_exit = Button("Salir", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
+        # if self.button_play == None:
+        #     self.button_play = Button("Jugar", self.manager.menu_center_y , self.manager.font_big, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
+        #     self.button_exit = Button("Salir", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
 
         #Captura de la posicion del mouse
         mouse_pos = pygame.mouse.get_pos()
@@ -122,28 +148,22 @@ class MenuState:
         
 
     def draw(self):
-
         #Vaciado de la pantalla
-        self.screen.fill(self.manager.BLACK)
+        self.manager.screen.fill(self.manager.BLACK)
 
         #Se dibujan los botones
-        self.button_play.draw(self.screen)
-        self.button_exit.draw(self.screen)
+        self.button_play.draw(self.manager.screen)
+        self.button_exit.draw(self.manager.screen)
 
         #Blit del titulo
-        self.screen.blit(self.menu_title_render, ((self.width //2) - (self.menu_title_render.get_width() //2), self.manager.title_y))
-
-        #Actualizacion de la pantalla
-        pygame.display.flip()
+        self.manager.screen.blit(self.menu_title_render, ((self.manager.width //2) - (self.menu_title_render.get_width() //2), self.manager.title_y))
 
     def resize(self, width, height):
         self.width, self.height = width, height
         self.menu_center_y = height // 2
         self.menu_title_render = self.manager.font_title.render(self.menu_title, True, self.manager.WHITE)
-        
-        if self.button_play is not None:
-            self.button_play = Button("Jugar", self.menu_center_y, self.manager.font_big, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
-            self.button_exit = Button("Salir", self.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
+        # Re-ubicar botones sin perder su estilo/estado visual
+        self.layout()
 
 class NameInputState:
     def __init__(self, manager):
@@ -155,31 +175,54 @@ class NameInputState:
         self.input1 = TextInput(self.manager, relative_y=-60)
         self.input2 = TextInput(self.manager, relative_y=0)
 
-        
+    def on_enter(self):
+        # Colocar inputs y botones antes del primer draw y reiniciar el caret visual
+        self.layout()
+        for inp in (self.input1, self.input2):
+            inp.caret_timer = 0.0
+            inp.caret_visible = True
+
+    def layout(self):
+        # Inputs centrados con offsets relativos
+        if hasattr(self.input1, "rect"):
+            self.input1.rect.centerx = self.manager.width // 2
+            self.input1.rect.centery = self.manager.menu_center_y - 60
+        if hasattr(self.input2, "rect"):
+            self.input2.rect.centerx = self.manager.width // 2
+            self.input2.rect.centery = self.manager.menu_center_y + 0
+        # Botones: centrar X y respetar sus Y objetivo
+        if hasattr(self.button_continue, "rect"):
+            self.button_continue.rect.centerx = self.manager.width // 2
+            self.button_continue.rect.centery = self.manager.menu_center_y + 240
+        if hasattr(self.button_backto_menu, "rect"):
+            self.button_backto_menu.rect.centerx = self.manager.width // 2
+            self.button_backto_menu.rect.centery = self.manager.menu_center_y + 300
+
+    def resize(self, width, height):
+        # Recolocar todo al cambiar el tamaño de la ventana
+        self.layout()
+
     def handle_event(self, event):
+        # Reenviar eventos a inputs
         click_in_1 = self.input1.handle_event(event)
         click_in_2 = self.input2.handle_event(event)
-
-        if self.button_continue is not None:
-            self.button_continue.handle_event(event)
-        if self.button_backto_menu is not None:
-            self.button_backto_menu.handle_event(event)
-
+        # Gestionar foco
         if click_in_1:
             self.input1.active = True
             self.input2.active = False
         elif click_in_2:
             self.input2.active = True
             self.input1.active = False
+        # Reenviar eventos a botones
+        self.button_continue.handle_event(event)
+        self.button_backto_menu.handle_event(event)
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RETURN:
                 self.manager.change_state("playing")
             elif event.key == pygame.K_ESCAPE:
-                    self.manager.game_data.reset(self.manager.width, self.manager.height)
-                    self.manager.change_state("menu")
-        
-
+                self.manager.game_data.reset(self.manager.width, self.manager.height)
+                self.manager.change_state("menu")
 
     def update(self, delta_time):
         mouse_pos = pygame.mouse.get_pos()
@@ -199,7 +242,6 @@ class NameInputState:
             self.manager.game_data.reset(self.manager.width, self.manager.height)
             self.manager.change_state("menu")
 
-
     def draw(self):
         self.manager.screen.fill(self.manager.BLACK)
         
@@ -207,7 +249,6 @@ class NameInputState:
         self.input2.draw()
         self.button_continue.draw(self.manager.screen)
         self.button_backto_menu.draw(self.manager.screen)
-        pygame.display.flip()
 
 class PlayingState:
     def __init__(self, manager):
@@ -471,7 +512,6 @@ class PlayingState:
         pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala2)
         pygame.draw.circle(self.manager.screen, self.manager.WHITE, ball_center, self.BALL_RADIUS)
         self.manager.screen.blit(scoreboard, (self.manager.width//2 - scoreboard.get_width()//2, 20))
-        pygame.display.flip()
 
     def resize(self, width, height):
         self.pala1_x = int(width * 0.15)
@@ -498,7 +538,31 @@ class PausedState:
 
         self.pause_title = self.manager.font_title.render("PAUSA", True, self.manager.WHITE)
 
-    
+    def on_enter(self):
+        # Crear botones si no existen y colocarlos antes del primer draw
+        if self.button_keep_playing is None:
+            self.button_keep_playing = Button("Reanudar", self.manager.menu_center_y, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
+            self.button_backto_menu = Button("Volver al menú", self.manager.menu_center_y + 80, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
+            self.button_exit = Button("Salir del juego", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
+            self.pause_buttons = [self.button_keep_playing, self.button_backto_menu, self.button_exit]
+        self.layout()
+
+    def layout(self):
+        # Centrar horizontalmente; respetar las Y definidas
+        for btn in self.pause_buttons:
+            if hasattr(btn, "rect"):
+                btn.rect.centerx = self.manager.width // 2
+        if hasattr(self.button_keep_playing, "rect"):
+            self.button_keep_playing.rect.centery = self.manager.menu_center_y
+        if hasattr(self.button_backto_menu, "rect"):
+            self.button_backto_menu.rect.centery = self.manager.menu_center_y + 80
+        if hasattr(self.button_exit, "rect"):
+            self.button_exit.rect.centery = self.manager.menu_center_y + 240
+
+    def resize(self, width, height):
+        # Recolocar con el nuevo tamaño
+        self.layout()
+
     def handle_event(self, event):
         if self.button_keep_playing is not None:
             self.button_keep_playing.handle_event(event)
@@ -510,15 +574,9 @@ class PausedState:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 self.manager.change_state("playing")
-        
-            
-    def update(self, delta_time):
-        if self.button_keep_playing == None:
-            self.button_keep_playing = Button("Reanudar", self.manager.menu_center_y, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
-            self.button_backto_menu = Button("Volver al menú", self.manager.menu_center_y + 80, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
-            self.button_exit = Button("Salir del juego", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
-            self.pause_buttons = [self.button_keep_playing, self.button_backto_menu, self.button_exit]
 
+    def update(self, delta_time):
+        # Aquí solo hover/animación; los botones ya existen
         self.mouse_pos = pygame.mouse.get_pos()
 
         for button in self.pause_buttons:
@@ -533,13 +591,8 @@ class PausedState:
             pygame.quit()
             exit()
 
-        
-
     def draw(self):
         self.manager.screen.fill(self.manager.BLACK)
         for button in self.pause_buttons:
             button.draw(self.manager.screen)
         self.manager.screen.blit(self.pause_title, (self.manager.width//2 - self.pause_title.get_width()//2, self.manager.title_y))
-
-
-        pygame.display.flip()

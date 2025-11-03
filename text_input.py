@@ -36,8 +36,12 @@ class TextInput:
                 self.active = True
                 self.caret_timer = 0
                 self.caret_visible = True
+                # Opcional: situar el caret al final al hacer click dentro
+                self.caret_pos = min(self.caret_pos, len(self.text)) if self.caret_pos else len(self.text)
+                return True
             else:
                 self.active = False
+                return False
 
         # Procesar teclas
         if event.type == pygame.KEYDOWN and self.active:
@@ -61,7 +65,7 @@ class TextInput:
                 if len(self.text) < self.max_length:
                     self.text = self.text[:self.caret_pos] + event.unicode + self.text[self.caret_pos:]
                     self.caret_pos += 1
-            
+            return False
 
 
     def draw(self):

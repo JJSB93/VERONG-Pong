@@ -19,7 +19,16 @@ clock = pygame.time.Clock()
 # Bucle principal del juego
 running = True
 while running == True:
+    # Limitar el delta_time para evitar bloqueos al arrastrar/redimensionar la ventana
     delta_time = clock.tick(fps) / 1000
+
+    # Clampeamos para mantener la app reactiva durante y después del resize
+    if delta_time > 0.25:
+        # Considerar el frame como "resumido" de una pausa larga
+        delta_time = 1.0 / 60.0
+    else:
+        delta_time = min(delta_time, 1.0 / 60.0)
+        
     pygame.event.pump()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
