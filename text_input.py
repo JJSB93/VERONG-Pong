@@ -84,7 +84,7 @@ class TextInput:
 
         pygame.draw.rect(self.manager.screen, border_color, self.rect, width=2)
 
-        text_surface = self.manager.font_text.render(self.text, True, self.manager.TXT_RED)
+        text_surface = self.manager.font_text.render(self.text, True, self.manager.BLACK)
 
         text_rect = text_surface.get_rect()
         text_rect.left = self.rect.left + self.padding

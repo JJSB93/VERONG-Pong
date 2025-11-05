@@ -12,12 +12,13 @@ class GameStateManager:
         self.screen = screen
         self.ball_reset_speed = ball_reset_speed
 
-        #Colores
-        self.WHITE = (255, 255, 255)
+        # Paleta Nocturna con acento menta
+        # Fondo oscuro, elementos jugables en off-white y acento menta
+        self.WHITE = (242, 242, 242)        # off-white para bola/palas/textos claros
         self.GRAY = (180, 180, 180)
-        self.LIGHT_GRAY = (211, 211, 211)
-        self.HIGHLIGHT = (255, 255, 100)
-        self.BLACK = (0, 0, 0)
+        self.LIGHT_GRAY = (210, 210, 210)    # línea central y detalles suaves
+        self.HIGHLIGHT = (46, 230, 166)      # menta para hovers/botones/acento
+        self.BLACK = (10, 12, 18)            # fondo nocturno
         self.TXT_RED = (166, 75, 51)
 
         #Medidas para colocar el menu
@@ -56,6 +57,10 @@ class GameStateManager:
             print(f"Error el estado {new_state_name} no existe")
 
     def handle_event(self, event):
+        # Pasar el evento al estado actual
+        state = self.game_states.get(self.current_state)
+        if state and hasattr(state, "handle_event"):
+            state.handle_event(event)
 
         # Resize: actualizar ventana y pedir recolocar al estado activo
         if event.type == pygame.VIDEORESIZE:
@@ -65,25 +70,17 @@ class GameStateManager:
             state = self.game_states.get(self.current_state)
             if state and hasattr(state, "resize"):
                 state.resize(self.width, self.height)
-            
-
-        # Pasar el evento al estado actual
-        state = self.game_states.get(self.current_state)
-        if state and hasattr(state, "handle_event"):
-            state.handle_event(event)
 
     def update(self, delta_time):
-
         if self.current_state:
             current = self.game_states[self.current_state]
             current.update(delta_time)
 
     def draw(self):
-
         if self.current_state:
             current = self.game_states[self.current_state]
             current.draw()
-        # Un único flip por frame para todos los estados
+
         pygame.display.flip()
 
 class MenuState:
@@ -96,7 +93,7 @@ class MenuState:
         #Render del titulo
         self.menu_title = "V  E  R  O  N  G"
         self.menu_title_render = self.manager.font_title.render(self.menu_title, True, self.manager.WHITE)
-
+        #Creacion de los botones
         self.button_play = Button("Jugar", self.manager.menu_center_y , self.manager.font_big, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
         self.button_exit = Button("Salir", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
 
@@ -128,10 +125,6 @@ class MenuState:
                     exit()
 
     def update(self, delta_time):
-        # if self.button_play == None:
-        #     self.button_play = Button("Jugar", self.manager.menu_center_y , self.manager.font_big, self.manager.WHITE, self.manager.HIGHLIGHT, fade_enabled=True)
-        #     self.button_exit = Button("Salir", self.manager.menu_center_y + 240, self.manager.font, self.manager.WHITE, self.manager.HIGHLIGHT)
-
         #Captura de la posicion del mouse
         mouse_pos = pygame.mouse.get_pos()
 
@@ -159,10 +152,6 @@ class MenuState:
         self.manager.screen.blit(self.menu_title_render, ((self.manager.width //2) - (self.menu_title_render.get_width() //2), self.manager.title_y))
 
     def resize(self, width, height):
-        self.width, self.height = width, height
-        self.menu_center_y = height // 2
-        self.menu_title_render = self.manager.font_title.render(self.menu_title, True, self.manager.WHITE)
-        # Re-ubicar botones sin perder su estilo/estado visual
         self.layout()
 
 class NameInputState:
@@ -174,6 +163,10 @@ class NameInputState:
 
         self.input1 = TextInput(self.manager, relative_y=-60)
         self.input2 = TextInput(self.manager, relative_y=0)
+
+        # Etiquetas para identificar a cada jugador (texto estático → render una vez)
+        self.p1_label = self.manager.font_text.render("Jugardor 1", True, self.manager.WHITE)
+        self.p2_label = self.manager.font_text.render("Jugardor 2", True, self.manager.WHITE)
 
     def on_enter(self):
         # Colocar inputs y botones antes del primer draw y reiniciar el caret visual
@@ -198,8 +191,8 @@ class NameInputState:
             self.button_backto_menu.rect.centerx = self.manager.width // 2
             self.button_backto_menu.rect.centery = self.manager.menu_center_y + 300
 
-    def resize(self, width, height):
-        # Recolocar todo al cambiar el tamaño de la ventana
+    def resize(self, _width, _height):
+        # Re-ubicar botones con los valores actuales del manager
         self.layout()
 
     def handle_event(self, event):
@@ -245,6 +238,18 @@ class NameInputState:
     def draw(self):
         self.manager.screen.fill(self.manager.BLACK)
         
+        # Dibujar etiquetas P1/P2 a la izquierda de cada input
+        if self.p1_label is not None:
+            gap = 16
+            x1 = max(8, self.input1.rect.left - gap - self.p1_label.get_width())
+            y1 = self.input1.rect.centery - self.p1_label.get_height() // 2
+            self.manager.screen.blit(self.p1_label, (x1, y1))
+        if self.p2_label is not None:
+            gap = 16
+            x2 = max(8, self.input2.rect.left - gap - self.p2_label.get_width())
+            y2 = self.input2.rect.centery - self.p2_label.get_height() // 2
+            self.manager.screen.blit(self.p2_label, (x2, y2))
+
         self.input1.draw()
         self.input2.draw()
         self.button_continue.draw(self.manager.screen)
@@ -494,9 +499,6 @@ class PlayingState:
     def draw(self):
         self.manager.screen.fill(self.manager.BLACK)
 
-        #Marcador
-        scores_text = f"{self.manager.game_data.p1_name} - {self.manager.game_data.p1_score}   {self.manager.game_data.p2_name} - {self.manager.game_data.p2_score}"
-        scoreboard = self.manager.font.render(scores_text, True, self.manager.BLACK, self.manager.WHITE)
 
         #Interpolacion del renderizado de la bola para suavizar el movimiento
         alpha = 0.8
@@ -505,13 +507,59 @@ class PlayingState:
         
         ball_center = (int(self.ball_render[0]), int(self.ball_render[1]))
 
+        # Línea discontinua central 
         for y in range(0, self.manager.height, 40):
-            pygame.draw.rect(self.manager.screen, self.manager.WHITE, 
-                     (self.manager.width // 2 - 5, y, 5, 20))
-        pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala1)
-        pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala2)
+            pygame.draw.rect(self.manager.screen, self.manager.LIGHT_GRAY, 
+                             (self.manager.width // 2 - 5, y, 4, 20))
+
+        # Palas con sombra sutil y esquinas redondeadas
+        paddle_radius = 6
+
+        # Sombra pala1
+        p1_shadow_surf = pygame.Surface((self.pala1.width + 6, self.pala1.height + 6), pygame.SRCALPHA)
+        pygame.draw.rect(p1_shadow_surf, (0, 0, 0, 90), (3, 3, self.pala1.width, self.pala1.height), border_radius=paddle_radius)
+        self.manager.screen.blit(p1_shadow_surf, (self.pala1.x - 3, self.pala1.y - 3))
+        # Sombra pala2
+        p2_shadow_surf = pygame.Surface((self.pala2.width + 6, self.pala2.height + 6), pygame.SRCALPHA)
+        pygame.draw.rect(p2_shadow_surf, (0, 0, 0, 90), (3, 3, self.pala2.width, self.pala2.height), border_radius=paddle_radius)
+        self.manager.screen.blit(p2_shadow_surf, (self.pala2.x - 3, self.pala2.y - 3))
+
+        # Palas (relleno blanco + contorno gris muy fino)
+        pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala1, border_radius=paddle_radius)
+        pygame.draw.rect(self.manager.screen, (220, 220, 220), self.pala1, width=1, border_radius=paddle_radius)
+        pygame.draw.rect(self.manager.screen, self.manager.WHITE, self.pala2, border_radius=paddle_radius)
+        pygame.draw.rect(self.manager.screen, (220, 220, 220), self.pala2, width=1, border_radius=paddle_radius)
+
+        # Sombra de la bola con alpha en superficie separada
+        shadow_d = self.BALL_RADIUS * 2 + 6
+        shadow_surface = pygame.Surface((shadow_d, shadow_d), pygame.SRCALPHA)
+        # círculo negro translúcido ligeramente desplazado dentro de la superficie
+        pygame.draw.circle(shadow_surface, (0, 0, 0, 110), (shadow_d//2 + 1, shadow_d//2 + 2), self.BALL_RADIUS)
+        self.manager.screen.blit(shadow_surface, (ball_center[0] - shadow_d//2, ball_center[1] - shadow_d//2))
+
+        # Bola
         pygame.draw.circle(self.manager.screen, self.manager.WHITE, ball_center, self.BALL_RADIUS)
-        self.manager.screen.blit(scoreboard, (self.manager.width//2 - scoreboard.get_width()//2, 20))
+
+        # Marcador 
+        scores_text = (
+            f"{self.manager.game_data.p1_name} - {self.manager.game_data.p1_score}   "
+            f"{self.manager.game_data.p2_name} - {self.manager.game_data.p2_score}"
+        )
+        text_main = self.manager.font.render(scores_text, True, self.manager.BLACK)
+        text_shadow = self.manager.font.render(scores_text, True, (80, 80, 80))
+        text_x = self.manager.width // 2 - text_main.get_width() // 2
+        text_y = 20
+        pad_x, pad_y = 16, 8
+        bg_w = text_main.get_width() + pad_x * 2
+        bg_h = text_main.get_height() + pad_y * 2
+        bg_surface = pygame.Surface((bg_w, bg_h), pygame.SRCALPHA)
+        pygame.draw.rect(bg_surface, (255, 255, 255, 255), (0, 0, bg_w, bg_h), border_radius=12)
+        pygame.draw.rect(bg_surface, (*self.manager.HIGHLIGHT, 230), (0, 0, bg_w, bg_h), width=2, border_radius=12)
+        bg_x = self.manager.width // 2 - bg_w // 2
+        bg_y = text_y - pad_y
+        self.manager.screen.blit(bg_surface, (bg_x, bg_y))
+        self.manager.screen.blit(text_shadow, (text_x + 2, text_y + 2))
+        self.manager.screen.blit(text_main, (text_x, text_y))
 
     def resize(self, width, height):
         self.pala1_x = int(width * 0.15)
@@ -559,7 +607,7 @@ class PausedState:
         if hasattr(self.button_exit, "rect"):
             self.button_exit.rect.centery = self.manager.menu_center_y + 240
 
-    def resize(self, width, height):
+    def resize(self, _width, _height):
         # Recolocar con el nuevo tamaño
         self.layout()
 
