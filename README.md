@@ -15,10 +15,20 @@ Un Pong realizado con Pygame con un pequeño framework de estados (Splash, Menú
 
 ## Controles
 
-- Menú: ratón; (si está habilitado) tecla J para iniciar.
-- Entrada de nombres: clic para foco; teclado para escribir; Enter continúa; Escape vuelve al menú.
-- Juego: W/S (izquierda) · Flechas ↑/↓ (derecha) · G saca si la bola está parada · Escape pausa.
-- Pausa: ratón para botones; Escape reanuda.
+| Estado             | Acción                         | Controles                                                       |
+| ------------------ | ------------------------------ | --------------------------------------------------------------- |
+| Menú               | Seleccionar                    | 🖱️ Click en botones · <kbd>J</kbd> Iniciar (si está habilitado) |
+| Entrada de nombres | Foco                           | 🖱️ Click dentro del campo                                       |
+| Entrada de nombres | Escribir                       | ⌨️ Teclado                                                      |
+| Entrada de nombres | Continuar                      | <kbd>Enter</kbd>                                                |
+| Entrada de nombres | Volver al menú                 | <kbd>Esc</kbd>                                                  |
+| Juego              | Mover pala izquierda           | <kbd>W</kbd> / <kbd>S</kbd>                                     |
+| Juego              | Mover pala derecha             | <kbd>↑</kbd> / <kbd>↓</kbd>                                     |
+| Juego              | Saque (si la bola está parada) | <kbd>G</kbd>                                                    |
+| Juego              | Pausar                         | <kbd>Esc</kbd>                                                  |
+| Pausa              | Reanudar                       | 🖱️ Botón «Reanudar» · <kbd>Esc</kbd>                            |
+| Pausa              | Volver al menú                 | 🖱️ Botón «Volver al menú»                                       |
+| Pausa              | Salir                          | 🖱️ Botón «Salir»                                                |
 
 ## Requisitos e instalación
 
