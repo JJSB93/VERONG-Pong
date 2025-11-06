@@ -76,7 +76,6 @@ python main.py
 - `button.py`: botón con animación y clic por borde.
 - `text_input.py`: entrada de texto con caret y edición.
 - `splash_state.py`: splash con fade.
-- `documentation/`: documentación y notas técnicas.
 
 ## Cronología resumida (desde la bitácora)
 
